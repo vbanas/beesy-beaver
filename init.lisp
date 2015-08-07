@@ -13,6 +13,8 @@
 (quicklisp:quickload "alexandria")
 (quicklisp:quickload "fset")
 (quicklisp:quickload "yason")
+;;; optional for vizualizator
+(quicklisp:quickload "hunchentoot")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))
