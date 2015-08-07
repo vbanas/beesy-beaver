@@ -60,6 +60,10 @@
        do (setf field (remove-row field row)))
     (values field num-removed-rows)))
 
+(defun check-cells (field cells)
+  (loop for cell in cells always
+       (zerop (get-cell field cell))))
+
 (defun compute-score (cleared cleared-prev unit-size)
   (let* ((points (+ unit-size (* (truncate 100 2) (1+ cleared) cleared)))
          (line-bonus (if (> cleared-prev 1)
@@ -76,19 +80,21 @@
       (if (eq new-cells :locked)
           (multiple-value-bind (new-field removed-rows)
               (lock-cells field unit-cells)
-            (make-game-state :field new-field
-                             :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                             ;; TODO: generate new unit
-                             :pivot new-pivot
-                             :unit-cells new-cells
-                             :unit-generator unit-generator
-                             :cleared-prev removed-rows))
-          (make-game-state :field field
-                           :score score
-                           :pivot new-pivot
-                           :unit-cells new-cells
-                           :unit-generator unit-generator
-                           :cleared-prev cleared-prev)))))
+            (values (make-game-state :field new-field
+                                     :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                     ;; TODO: generate new unit
+                                     :pivot new-pivot
+                                     :unit-cells new-cells
+                                     :unit-generator unit-generator
+                                     :cleared-prev removed-rows)
+                    nil))
+          (values (make-game-state :field field
+                                   :score score
+                                   :pivot new-pivot
+                                   :unit-cells new-cells
+                                   :unit-generator unit-generator
+                                   :cleared-prev cleared-prev)
+                  nil)))))
 
 (defun initial-state (task seed-index)
   (make-game-state :field (task-field task)
