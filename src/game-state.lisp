@@ -88,7 +88,7 @@
       cur-state
     (multiple-value-bind (new-pivot new-cells)
         (update-command-cells field pivot unit-cells command)
-      (if (eq new-cells :locked)
+      (if (eq new-pivot :locked)
           (multiple-value-bind (new-field removed-rows)
               (lock-cells field unit-cells)
             (multiple-value-bind (pivot units) (funcall unit-generator)
@@ -96,9 +96,8 @@
                        (check-cells new-field units))
                   (values (make-game-state :field new-field
                                            :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                           ;; TODO: generate new unit
-                                           :pivot new-pivot
-                                           :unit-cells new-cells
+                                           :pivot pivot
+                                           :unit-cells units
                                            :unit-generator unit-generator
                                            :cleared-prev removed-rows)
                           nil)
