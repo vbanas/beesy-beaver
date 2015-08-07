@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>Beesy Beaver Visualisator</title>
+    
+    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+    <script type="text/javascript" src="http://d3js.org/d3.hexbin.v0.min.js"></script>	
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.3/jquery.js"></script>
+  </head>
+  <body>
+    <div id="chart"></div>
+    
+    <script type="text/javascript" src="honeycomb.js"></script>
+
+    <a id="get-prev-map" href="#" margin-right="5px">&lt&lt&lt</a>
+    <a id="get-current-map" href="#">Get current map</a>
+    <a id="get-next-map" href="#" margin-left="5px">&gt&gt&gt</a>
+
+    d3.select("get-current-map")
+      .on("click", function () {
+    $.ajax("get-map?pos=o", function (data) {
+    draw_honeycomb(data.columns, data.rows, data.points);
+    })});
+    
+
+  </body>
+</html>
