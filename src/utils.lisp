@@ -1,9 +1,15 @@
 (in-package :beesy-beaver)
 
+
+(defun min-max-list (min-fn key-fn list)
+  (let ((keys (mapcar key-fn list)))
+    (reduce min-fn (cdr keys) :initial-value (car keys))))
+
+
 (defun unit-start-position (pivot members)
-  (let* ((left (apply (lambda (p1 p2) (min (pos-col p1) (pos-col p2))) members))
-	 (right (apply (lambda (p1 p2) (max (pos-col p1) (pos-col p2))) members))
-	 (rowOffset (apply (lambda (p1 p2) (min (pos-row p1) (pos-row p2))) members))
+  (let* ((left (min-max-list #'min #'pos-col members))
+	 (right (min-max-list #'max #'pos-col members))
+	 (rowOffset (min-max-list #'min #'pos-row members))
 	 (colOffset (truncate (- *width* (+ (- right left) 1)) 2))
 	 (toAdd (pos-to-cube (make-pos 0 colOffset)))
 	 (toSub (pos-to-cube (make-pos rowOffset left))))

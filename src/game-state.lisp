@@ -86,7 +86,7 @@
 (defun next-state (cur-state command)
   (with-slots (field score pivot unit-cells unit-generator cleared-prev)
       cur-state
-    (multiple-value-bind (new-cells new-pivot)
+    (multiple-value-bind (new-pivot new-cells)
         (update-command-cells field pivot unit-cells command)
       (if (eq new-cells :locked)
           (multiple-value-bind (new-field removed-rows)
