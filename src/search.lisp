@@ -199,12 +199,6 @@
      collect node
      do (setf node (best-child node :reward t))))
 
-(defun collect-best-children1 (node)
-  (loop while node
-     collect (test-state-current-node
-              (state node))
-     do (setf node (best-child node :reward t))))
-
 (defun test-explore-state (graph-spec)
   (let ((graph (make-hash-table)))
     (loop for (name . links) in graph-spec do
@@ -215,7 +209,8 @@
                  (make-test-state :graph graph
                                   :current-node 'start)
                  100)))
-      (collect-best-children1 node))))
+      (mapcar (compose #'test-state-current-node #'state)
+              (collect-best-children node)))))
 
 (defun test-1 ()
   (assert
