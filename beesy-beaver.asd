@@ -1,5 +1,5 @@
 (asdf:defsystem :beesy-beaver
-  :depends-on (:fset)
+  :depends-on (:fset :yason)
   :components ((:file "src/packages")
                (:file "src/field" :depends-on ("src/packages"))
                (:file "src/game-state" :depends-on ("src/packages" "src/field"))
