@@ -32,7 +32,7 @@
                      :initform nil
                      :type list)))
 
-(defvar *debug* t)
+(defparameter *debug* nil)
 
 (defmacro dprint (fmt &rest args)
   `(when *debug*
@@ -130,6 +130,32 @@
 
 ;; ----------------------------------------
 
+(defmethod get-moves ((state beesy-beaver::game-state))
+  (unless (beesy-beaver::gs-terminal? state)
+    (list :west :east :south-west :south-east
+          :clockwise :counter-clockwise)))
+
+(defmethod apply-move ((state beesy-beaver::game-state) move)
+  (beesy-beaver::next-state state move))
+
+(defmethod estimate-reward ((state beesy-beaver::game-state))
+  (loop while (not (beesy-beaver::gs-terminal? state)) do
+       (let ((moves (get-moves state)))
+         (setf state (apply-move
+                      state
+                      (nth (random (length moves)) moves)))))
+  (beesy-beaver::gs-score state))
+
+(defun play-tetris (initial-state iterations)
+  (mapcar
+   #'move
+   (collect-best-children
+    (explore-state
+     initial-state iterations))))
+
+
+;; ----------------------------------------
+
 (defstruct test-state
   (score 0)
   current-node
@@ -168,6 +194,12 @@
   (nth move (gethash (test-state-current-node s)
                      (test-state-graph s))))
 
+(defun collect-best-children (node)
+  (loop while node
+     collect (test-state-current-node
+              (state node))
+     do (setf node (best-child node :reward t))))
+
 (defun test-explore-state (graph-spec)
   (let ((graph (make-hash-table)))
     (loop for (name . links) in graph-spec do
@@ -178,11 +210,7 @@
                  (make-test-state :graph graph
                                   :current-node 'start)
                  100)))
-      (loop while node
-         collect (test-state-current-node
-                  (state node))
-         do (setf node (best-child node :reward t)))
-      )))
+      (collect-best-children node))))
 
 (defun test-1 ()
   (assert
