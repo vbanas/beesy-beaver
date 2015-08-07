@@ -185,12 +185,16 @@
       )))
 
 (defun test-1 ()
-  (test-explore-state
-   '((start
-      (a 10)
-      (b 20))
-     (b (c 1))
-     (a
-      (finish 30)
-      (c 2))
-     (c (finish 1)))))
+  (assert
+   (equalp
+    (test-explore-state
+     '((start
+        (a 10)
+        (b 20))
+       (b (c 1))
+       (a
+        (finish 30)
+        (c 2))
+       (c (finish 1))))
+    '(start a finish)))
+  t)
