@@ -10,6 +10,7 @@
 
 ;; quickload dependencies
 (quicklisp:quickload "asdf")
+(quicklisp:quickload "alexandria")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))
