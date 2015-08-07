@@ -78,8 +78,11 @@
                  (reward (%expand node))
                  (if (children node)
                      (progn
-                       (incf (reward node)
-                             (%iterate (best-child node))))
+                       (%iterate (best-child node))
+                       (setf
+                        (reward node)
+                        (reduce #'max
+                                (mapcar #'reward (children node)))))
                      (reward node)))
            (dprint "iterate: node ~A, state ~A, reward ~A~%"
                    (id node) (show-state (state node))
@@ -100,24 +103,29 @@
 (defparameter *magical-c* 1)
 
 (defun best-child (node)
-  (cdr
-   (reduce (lambda (rank/node child)
-             (let ((rank (rank-node node child)))
-               (dprint "best-child: node ~A, state ~A, rank ~A~%"
-                       (id child) (show-state (state child)) rank)
-               (if (or (null rank/node)
-                       (> rank (car rank/node)))
-                   (cons rank child)
-                   rank/node)))
-           (children node)
-           :initial-value nil)))
+  (labels ((%scan (fn key)
+             (cdr
+              (reduce
+               (lambda (rank/node child)
+                 (let ((rank (funcall key child)))
+                   (dprint "best-child: node ~A, state ~A, rank ~A~%"
+                           (id child) (show-state (state child)) rank)
+                   (if (or (null rank/node)
+                           (funcall fn rank (car rank/node)))
+                       (cons rank child)
+                       rank/node)))
+               (children node)
+               :initial-value nil))))
+    (if (= 0 (random 2))
+        (%scan #'> #'reward)
+        (%scan #'< #'visits))))
 
-(defun rank-node (parent node)
-  (+ (reward node)
-     (* *magical-c*
-        (sqrt
-         (/ (log (visits parent))
-            (visits node))))))
+;; (defun rank-node (parent node)
+;;   (+ (reward node)
+;;      (* *magical-c*
+;;         (sqrt
+;;          (/ (log (visits parent))
+;;             (visits node))))))
 
 ;; ----------------------------------------
 
