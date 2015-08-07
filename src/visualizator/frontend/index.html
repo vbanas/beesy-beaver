@@ -33,6 +33,39 @@
         $.get("/send-command?command=" + d3.select("#command-value").property("value"),
       function (data) {
       draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE); });});
+
+      function send_command (command) {
+      $.get("/send-command?command=" + command, 
+      function (data) {
+      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE); })}
+
+      d3.select("body").on("keydown", function () {
+      var code = d3.event.keyCode;
+      // a
+      if (code == 65) {
+      send_command("west");
+      }
+      // d
+      else if (code == 68) {
+      send_command("east");
+      }
+      // z
+      else if (code == 90) {
+      send_command("south-west");
+      }
+      // x
+      else if (code == 88) {
+      send_command("south-east");
+      }
+      // q
+      else if (code == 81) {
+      send_command("counter-clockwise");
+      }
+      // e
+      else if (code == 69) {
+      send_command ("clockwise");
+      }
+      });
     </script>
     
 

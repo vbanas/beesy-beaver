@@ -27,7 +27,7 @@ function draw_honeycomb (columns, rows, points, score) {
     var hexbin = d3.hexbin().radius(hexRadius);
 
     d3.select ("svg").remove ();
-    d3.select ("score-value").text (score);
+    d3.select ("#score-value").text (score);
 
     var coords = [];
     for (var i = 0; i < rows; i++) {
