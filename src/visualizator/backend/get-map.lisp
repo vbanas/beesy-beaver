@@ -26,6 +26,20 @@
      result)
     (get-output-stream-string result)))
 
+(define-easy-handler (send-command :uri "/send-command") (command)
+  (setf (content-type*) "application/json")
+  (setf *current-game-state*
+        (beesy-beaver::next-state *current-game-state* (intern (string-upcase command) :keyword)))
+  (let ((result (make-string-output-stream)))
+    (yason:encode-alist
+     (get-current-map)
+     ;; (case pos
+     ;;   (0 (get-current-map))
+     ;;   (1 (get-next-map))
+     ;;   (-1 (get-prev-map)))
+     result)
+    (get-output-stream-string result)))
+
 
 (defvar *current-game-state*)
 

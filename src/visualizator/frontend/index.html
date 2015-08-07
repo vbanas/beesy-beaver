@@ -18,6 +18,8 @@
     <a id="get-next-map" href="#" margin-left="5px">&gt&gt&gt</a>
 
     <h3 id="score-value">Score : 0</h3>
+    <input id="command-value" />
+    <a id="send-command" href="#">Send command</a>
 
     <script>
       d3.select("#get-current-map")
@@ -25,6 +27,11 @@
       $.get("/get-map?pos=o", function (data) {
       draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE);
       })});
+
+      d3.select("#send-command")
+      .on("click", function() {
+        $.get("/send-command?command=" + d3.select("#command-value").text(),
+      function (data) { draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE); });});
     </script>
     
 
