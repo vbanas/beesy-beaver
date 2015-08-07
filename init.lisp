@@ -10,6 +10,7 @@
 
 ;; quickload dependencies
 (quicklisp:quickload "asdf")
+(quicklisp:quickload "alexandria")
 (quicklisp:quickload "fset")
 (quicklisp:quickload "yason")
 

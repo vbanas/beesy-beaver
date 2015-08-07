@@ -89,3 +89,13 @@
                            :unit-cells new-cells
                            :unit-generator unit-generator
                            :cleared-prev cleared-prev)))))
+
+(defun initial-state (task seed-index)
+  (make-game-state :field (task-field task)
+                   :score 0
+                   ;; TODO: start generating units
+                   :pivot (make-pos 0 0)
+                   :unit-cells (list (make-pos 0 0) (make-pos 0 1))
+                   :unit-generator nil
+                   :cleared-prev 0
+                   ))
