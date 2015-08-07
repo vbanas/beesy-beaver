@@ -17,11 +17,15 @@
     <a id="get-current-map" href="#">Get current map</a>
     <a id="get-next-map" href="#" margin-left="5px">&gt&gt&gt</a>
 
-    d3.select("get-current-map")
+    <h3 id="score-value">Score : 0</h3>
+
+    <script>
+      d3.select("#get-current-map")
       .on("click", function () {
-    $.ajax("get-map?pos=o", function (data) {
-    draw_honeycomb(data.columns, data.rows, data.points);
-    })});
+      $.get("/get-map?pos=o", function (data) {
+      draw_honeycomb(data.columns, data.rows, data.points, data.score);
+      })});
+    </script>
     
 
   </body>

@@ -35,6 +35,8 @@
 (defun get-cell (field pos)
   (fset:@ (cdr (fset:@ field (pos-row pos))) (pos-col pos)))
 
+(defvar *filled-rows* nil)
+
 (defun put-cell (field pos val)
   (let* ((old-row (fset:@ field (pos-row pos)))
          (old-val (fset:@ (cdr old-row) (pos-col pos)))
@@ -42,7 +44,8 @@
                    (logand old-val 1)))
          (new-fill (+ (car old-row)
                         delta)))
-    ;; TODO: do something when new-fill = *width*
+    (when (= new-fill *width*)
+      (pushnew (pos-row pos) *filled-rows*))
     (fset:with field (pos-row pos)
                (cons new-fill
                      (fset:with (cdr old-row) (pos-col pos) val)))))
@@ -99,9 +102,6 @@
       (return-from validate-pos :invalid))
     pos))
 
-(defun make-and-check-pos (row col)
-  (validate-pos (make-pos row col)))
-
 (defun move (pos dir)
   (with-slots (row col) pos
     (let ((new-row row)
@@ -116,7 +116,7 @@
                      (when (oddp row)
                        (incf new-col)))
         (otherwise (return-from move :invalid)))
-      (make-and-check-pos new-row new-col))))
+      (make-pos new-row new-col))))
 
 (defun rotate (pivot cell clockwise)
   (let* ((cpivot (pos-to-cube pivot))
@@ -154,7 +154,7 @@
          (*height* 20)
          (failed 0))
     (labels ((%test (row col dir ref-res)
-               (let ((res (move (make-pos row col) dir)))
+               (let ((res (validate-pos (move (make-pos row col) dir))))
                  (unless (equalp res ref-res)
                    (format t "Wrong move ~A: from ~A, res = ~A, reference = ~A~%"
                            dir
