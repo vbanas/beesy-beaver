@@ -58,9 +58,9 @@
 
 ;;
 (defun decode-field (width height filled)
-  (let* ((*width* width)
-	 (*height* height)
-	 (field (make-field)))
+  (setf *width* width
+        *height* height)
+  (let ((field (make-field)))
     (mapcar (lambda (p) (setf field (put-cell field (decode-cell p) 1)))  filled)
     field))
 

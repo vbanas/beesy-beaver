@@ -4,11 +4,11 @@
 (defparameter *server* nil)
 
 (defun start-server (&key (port 4343))
-  (unless (started-p *server*)
+  (unless (and *server* (started-p *server*))
     (setf *server* (make-instance 'easy-acceptor :port port))
     (start *server*)))
 
 
 (defun stop-server ()
-  (when (started-p *server*)
+  (when (and *server* (started-p *server*))
     (stop *server*)))
