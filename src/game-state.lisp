@@ -6,7 +6,8 @@
   pivot
   unit-cells
   unit-generator
-  cleared-prev)
+  cleared-prev
+  terminal?)
 
 (defun update-cells (field func cells new-pos-l)
   (if (null cells)
@@ -88,34 +89,36 @@
       cur-state
     (multiple-value-bind (new-pivot new-cells)
         (update-command-cells field pivot unit-cells command)
-      (if (eq new-cells :locked)
-          (multiple-value-bind (new-field removed-rows)
-              (lock-cells field unit-cells)
-            (multiple-value-bind (pivot units) (funcall unit-generator)
-              (if (and pivot
-                       (check-cells new-field units))
-                  (values (make-game-state :field new-field
-                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                           ;; TODO: generate new unit
-                                           :pivot new-pivot
-                                           :unit-cells new-cells
-                                           :unit-generator unit-generator
-                                           :cleared-prev removed-rows)
-                          nil)
-                  (values (make-game-state :field new-field
-                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                           :pivot nil
-                                           :unit-cells nil
-                                           :unit-generator unit-generator
-                                           :cleared-prev removed-rows)
-                          t))))
-          (values (make-game-state :field field
-                                   :score score
-                                   :pivot new-pivot
-                                   :unit-cells new-cells
-                                   :unit-generator unit-generator
-                                   :cleared-prev cleared-prev)
-                  nil)))))
+      (let ((new-state
+             (if (eq new-cells :locked)
+                 (multiple-value-bind (new-field removed-rows)
+                     (lock-cells field unit-cells)
+                   (multiple-value-bind (pivot units) (funcall unit-generator)
+                     (if (and pivot
+                              (check-cells new-field units))
+                         (make-game-state :field new-field
+                                          :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                          ;; TODO: generate new unit
+                                          :pivot new-pivot
+                                          :unit-cells new-cells
+                                          :unit-generator unit-generator
+                                          :cleared-prev removed-rows
+                                          :terminal? nil)
+                         (make-game-state :field new-field
+                                          :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                          :pivot nil
+                                          :unit-cells nil
+                                          :unit-generator unit-generator
+                                          :cleared-prev removed-rows
+                                          :terminal? t))))
+                 (make-game-state :field field
+                                  :score score
+                                  :pivot new-pivot
+                                  :unit-cells new-cells
+                                  :unit-generator unit-generator
+                                  :cleared-prev cleared-prev
+                                  :terminal? nil))))
+        (values new-state (gs-terminal? new-state))))))
 
 (defun initial-state (task seed-index)
   (let ((gen (make-unit-generator task seed-index)))
@@ -126,6 +129,7 @@
                                     :unit-cells units
                                     :unit-generator gen
                                     :cleared-prev 0
+                                    :terminal? nil
                                     )))
         (if (and pivot
                  (check-cells (task-field task) units))
