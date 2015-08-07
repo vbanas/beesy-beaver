@@ -97,26 +97,27 @@
            (dprint "~%Iteration #~A~%~%" i)
            (%iterate root-node))
       (prog1
-          (best-child root-node)
+          root-node
         (dprint "~%Exploration done~%~%")))))
 
 (defparameter *magical-c* 1)
 
-(defun best-child (node)
+(defun best-child (node &key (reward nil))
   (labels ((%scan (fn key)
              (cdr
               (reduce
                (lambda (rank/node child)
                  (let ((rank (funcall key child)))
-                   (dprint "best-child: node ~A, state ~A, rank ~A~%"
-                           (id child) (show-state (state child)) rank)
+                   (dprint "best-child: node ~A, state ~A, rank ~A ~A~%"
+                           (id child) (show-state (state child))
+                           key rank)
                    (if (or (null rank/node)
                            (funcall fn rank (car rank/node)))
                        (cons rank child)
                        rank/node)))
                (children node)
                :initial-value nil))))
-    (if (= 0 (random 2))
+    (if (or (= 0 (random 2)) reward)
         (%scan #'> #'reward)
         (%scan #'< #'visits))))
 
@@ -130,6 +131,7 @@
 ;; ----------------------------------------
 
 (defstruct test-state
+  (score 0)
   current-node
   graph)
 
@@ -139,23 +141,25 @@
        collect i)))
 
 (defmethod apply-move ((s test-state) move)
-  (with-slots (current-node graph) s
-    (make-test-state
-     :current-node (car (nth move (gethash current-node graph)))
-     :graph graph)))
+  (with-slots (current-node graph score) s
+    (let ((node/cost (nth move (gethash current-node graph))))
+      (make-test-state
+       :score (+ score (cdr node/cost))
+       :current-node (car node/cost)
+       :graph graph))))
 
 (defmethod estimate-reward ((s test-state))
-  (with-slots (graph current-node) s
-    (let ((score 0))
+  (with-slots (graph score current-node) s
+    (let ((score1 score))
       (labels ((%step (node)
                  (let ((links (gethash node graph)))
                    (when links
                      (let ((link (nth (random (length links))
                                       links)))
-                       (incf score (cdr link))
+                       (incf score1 (cdr link))
                        (%step link))))))
         (%step current-node)
-        score))))
+        score1))))
 
 (defmethod show-state ((s test-state))
   (test-state-current-node s))
@@ -177,16 +181,20 @@
       (loop while node
          collect (test-state-current-node
                   (state node))
-         do (setf node (best-child node)))
+         do (setf node (best-child node :reward t)))
       )))
 
 (defun test-1 ()
-  (test-explore-state
-   '((start
-      (a 10)
-      (b 20))
-     (b (c 1))
-     (a
-      (finish 30)
-      (c 2))
-     (c (finish 1)))))
+  (assert
+   (equalp
+    (test-explore-state
+     '((start
+        (a 10)
+        (b 20))
+       (b (c 1))
+       (a
+        (finish 30)
+        (c 2))
+       (c (finish 1))))
+    '(start a finish)))
+  t)

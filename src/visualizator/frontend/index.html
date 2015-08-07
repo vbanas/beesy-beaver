@@ -23,7 +23,7 @@
       d3.select("#get-current-map")
       .on("click", function () {
       $.get("/get-map?pos=o", function (data) {
-      draw_honeycomb(data.columns, data.rows, data.points, data.score);
+      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE);
       })});
     </script>
     
