@@ -1,3 +1,5 @@
+(in-package :beesy-beaver)
+
 (defconstant +modulus+ (expt 2 32))
 (defconstant +multiplier+ 1103515245)
 (defconstant +increment+ 12345)
