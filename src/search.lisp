@@ -53,7 +53,7 @@
                   :move move
                   :state new-state
                   :reward (estimate-reward new-state)
-                  :moves-to-explore (get-moves new-state))))
+                  :moves-to-explore (shuffle (get-moves new-state)))))
            (%link parent new-node)
            new-node))
        (%expand (node)
@@ -196,6 +196,11 @@
 
 (defun collect-best-children (node)
   (loop while node
+     collect node
+     do (setf node (best-child node :reward t))))
+
+(defun collect-best-children1 (node)
+  (loop while node
      collect (test-state-current-node
               (state node))
      do (setf node (best-child node :reward t))))
@@ -210,7 +215,7 @@
                  (make-test-state :graph graph
                                   :current-node 'start)
                  100)))
-      (collect-best-children node))))
+      (collect-best-children1 node))))
 
 (defun test-1 ()
   (assert
