@@ -72,6 +72,17 @@
                          0)))
     (+ points line-bonus)))
 
+(defun make-unit-generator (task seed-index)
+  (let ((units (make-array (length (task-units task))
+                           :initial-contents (task-units task)))
+        (rnumbers (lcgen (nth seed-index (task-source-seeds task))
+                         (task-source-length task))))
+    (lambda ()
+      (let* ((num (pop rnumbers))
+            (unit (and num (aref units (mod num (array-dimension units 0))))))
+        (when unit
+          (unit-start-position (unit-pivot unit) (unit-members unit)))))))
+
 (defun next-state (cur-state command)
   (with-slots (field score pivot unit-cells unit-generator cleared-prev)
       cur-state
@@ -80,14 +91,24 @@
       (if (eq new-cells :locked)
           (multiple-value-bind (new-field removed-rows)
               (lock-cells field unit-cells)
-            (values (make-game-state :field new-field
-                                     :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                     ;; TODO: generate new unit
-                                     :pivot new-pivot
-                                     :unit-cells new-cells
-                                     :unit-generator unit-generator
-                                     :cleared-prev removed-rows)
-                    nil))
+            (multiple-value-bind (pivot units) (funcall unit-generator)
+              (if (and pivot
+                       (check-cells new-field units))
+                  (values (make-game-state :field new-field
+                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                           ;; TODO: generate new unit
+                                           :pivot new-pivot
+                                           :unit-cells new-cells
+                                           :unit-generator unit-generator
+                                           :cleared-prev removed-rows)
+                          nil)
+                  (values (make-game-state :field new-field
+                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                           :pivot nil
+                                           :unit-cells nil
+                                           :unit-generator unit-generator
+                                           :cleared-prev removed-rows)
+                          t))))
           (values (make-game-state :field field
                                    :score score
                                    :pivot new-pivot
@@ -97,11 +118,20 @@
                   nil)))))
 
 (defun initial-state (task seed-index)
-  (make-game-state :field (task-field task)
-                   :score 0
-                   ;; TODO: start generating units
-                   :pivot (make-pos 0 0)
-                   :unit-cells (list (make-pos 0 0) (make-pos 0 1))
-                   :unit-generator nil
-                   :cleared-prev 0
-                   ))
+  (let ((gen (make-unit-generator task seed-index)))
+    (multiple-value-bind (pivot units) (funcall gen)
+      (let ((state (make-game-state :field (task-field task)
+                                    :score 0
+                                    :pivot pivot
+                                    :unit-cells units
+                                    :unit-generator gen
+                                    :cleared-prev 0
+                                    )))
+        (if (and pivot
+                 (check-cells (task-field task) units))
+            (values
+             state
+             nil)
+            (values
+             state
+             t))))))
