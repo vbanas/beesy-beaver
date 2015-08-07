@@ -140,18 +140,17 @@
 
 (defmethod estimate-reward ((state beesy-beaver::game-state))
   (loop while (not (beesy-beaver::gs-terminal? state)) do
-       (let ((moves (get-moves state)))
-         (setf state (apply-move
-                      state
-                      (nth (random (length moves)) moves)))))
+       (setf state (apply-move
+                    state (random-elt (get-moves state)))))
   (beesy-beaver::gs-score state))
 
 (defun play-tetris (initial-state iterations)
   (mapcar
    #'move
-   (collect-best-children
-    (explore-state
-     initial-state iterations))))
+   (cdr ;; first elt is a move of root state (nil)
+    (collect-best-children
+     (explore-state
+      initial-state iterations)))))
 
 
 ;; ----------------------------------------
