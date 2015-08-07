@@ -19,10 +19,11 @@
     seq))
 
 (defun generate-row ()
-  (generate-seq *width*
-                (lambda (ind)
-                  (declare (ignore ind))
-                  0)))
+  (cons 0
+        (generate-seq *width*
+                      (lambda (ind)
+                        (declare (ignore ind))
+                        0))))
 
 (defun make-field ()
   (generate-seq
@@ -32,12 +33,19 @@
      (generate-row))))
 
 (defun get-cell (field pos)
-  (fset:@ (fset:@ field (pos-row pos)) (pos-col pos)))
+  (fset:@ (cdr (fset:@ field (pos-row pos))) (pos-col pos)))
 
 (defun put-cell (field pos val)
-  (let ((old-row (fset:@ field (pos-row pos))))
+  (let* ((old-row (fset:@ field (pos-row pos)))
+         (old-val (fset:@ (cdr old-row) (pos-col pos)))
+         (delta (- (logand val 1)
+                   (logand old-val 1)))
+         (new-fill (+ (car old-row)
+                        delta)))
+    ;; TODO: do something when new-fill = *width*
     (fset:with field (pos-row pos)
-               (fset:with old-row (pos-col pos) val))))
+               (cons new-fill
+                     (fset:with (cdr old-row) (pos-col pos) val)))))
 
 (defun remove-row (field row)
   (fset:with-first (fset:less field row)
@@ -111,27 +119,11 @@
       (make-and-check-pos new-row new-col))))
 
 (defun rotate (pivot cell clockwise)
-  ;; (validate-pos
-  ;;  (pos-add pivot
-  ;;           (basic-rotate (pos-sub cell pivot)
-  ;;                         clockwise)))
   (let* ((cpivot (pos-to-cube pivot))
          (ccell (pos-to-cube cell))
          (rotated (cube-rotate (cube-pos-sub ccell cpivot)
                                clockwise)))
-    (cube-to-pos (cube-pos-add cpivot rotated))))
-
-(defun basic-rotate (pos clockwise)
-  (with-slots (row col) pos
-    (let* ((xx (- col (truncate (- row (logand row 1)) 2)))
-           (zz row)
-           (yy (- (+ xx zz))))
-      (if clockwise
-          (multiple-value-setq (xx yy zz)
-            (values (- zz) (- xx) (- yy)))
-          (multiple-value-setq (xx yy zz)
-            (values (- yy) (- zz) (- xx))))
-      (make-pos zz (+ xx (truncate (- zz (logand zz 1)) 2))))))
+    (validate-pos (cube-to-pos (cube-pos-add cpivot rotated)))))
  
 ;; Little benchmarking
 
