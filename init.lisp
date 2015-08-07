@@ -11,6 +11,8 @@
 ;; quickload dependencies
 (quicklisp:quickload "asdf")
 (quicklisp:quickload "alexandria")
+(quicklisp:quickload "fset")
+(quicklisp:quickload "yason")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))
