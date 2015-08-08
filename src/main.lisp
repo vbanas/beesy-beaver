@@ -2,8 +2,7 @@
 
 (defun main ()
   (when sb-ext:*posix-argv*
-    (let* ((parsed-args (apply-argv:parse-argv* ;;'("./test.bin" "-f" "f1" "-f" "f2" "-t" "10" "-f" "f3" "-m" "100" "-c" "2" "-p" "dfsd" "-p" "sdfsf")))
-			sb-ext:*posix-argv*))
+    (let* ((parsed-args (apply-argv:parse-argv* sb-ext:*posix-argv*))
 	   (files) (phrases) (time) (memory) (proc-count))
       (format t "~A~%~A~%" parsed-args (alexandria:plist-alist (cdr parsed-args)))
       (mapcar (lambda (p) 
@@ -22,5 +21,5 @@
 	  (when (probe-file f)
 	    (format t "~A~%~%" (alexandria:read-file-into-string f))
 	    (append result-list (simple-wave-from-task 
-				 (alexandria:read-file-into-string f))))) 
+				 (decode-task (alexandria:read-file-into-string f)))))) 
 	(yason:encode result-list)))))
