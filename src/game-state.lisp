@@ -170,6 +170,8 @@
                 (list :counter-clockwise)
                 nil))))))
 
+(defvar *was-locked* nil)
+
 (defun next-state (cur-state command)
   (with-slots (field score pivot unit-cells unit-generator cleared-prev last-rotations last-horiz-move max-rotations)
       cur-state
@@ -179,6 +181,7 @@
              (if (eq new-pivot :locked)
                  (multiple-value-bind (new-field removed-rows)
                      (lock-cells field unit-cells)
+                   (setf *was-locked* t)
                    (multiple-value-bind (pivot units new-max-rot new-gen) (generate-new-unit unit-generator)
                      (if (and pivot
                               (check-cells new-field units))
