@@ -128,8 +128,8 @@
                                                                  (unit-pivot unit)
                                                                  (unit-members unit)))
                                                               (task-units task))))
-         (rnumbers (lcgen (nth seed-index (task-source-seeds task))
-                          (task-source-length task)))
+         (rnumbers (get-seeds (nth seed-index (task-source-seeds task))
+                              (task-source-length task)))
          (units-left (length rnumbers)))
     (mk-ug :rnumbers rnumbers
            :units units
@@ -238,6 +238,12 @@
             (values
              state
              t))))))
+
+(defun terminate-state (state)
+  (let ((copy (copy-game-state state)))
+    (setf (gs-terminal? copy)
+          t)
+    copy))
 
 (defun state-identifier (state)
   (with-slots (field pivot unit-cells) state

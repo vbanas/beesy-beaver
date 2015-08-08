@@ -40,10 +40,7 @@
                              (cons :col (bb::pos-col pivot))))
           (cons :score (bb::gs-score *current-game-state*))
           (cons :is_terminated (if (bb::gs-terminal? *current-game-state*)
-                                   1 0)))))
+                                   1 0))
+          (cons :units_left (bb::unit-generator-units-left
+                             (bb::gs-unit-generator *current-game-state*))))))
 
-
-(defun get-next-map ())
-
-
-(defun get-prev-map ())
