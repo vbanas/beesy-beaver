@@ -50,7 +50,9 @@
     ;; TODO: Squares here
     (loop for val across horiz-nums
        do (incf horiz-planarity (abs (- val avg-height))))
-    (let* ((vc-est (/ vert-compactness filled))
+    (let* ((vc-est (if (zerop filled)
+                       1
+                       (/ vert-compactness filled)))
            (hp-est (- (* *width* *height*) horiz-planarity))
            (nh-est (- (* *width* *height*) num-holes))
            (total-est (* (+ (* *vert-coef* vc-est)
