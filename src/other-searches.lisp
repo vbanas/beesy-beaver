@@ -91,7 +91,7 @@
       res)))
 
 (defun simple-wave-from-task (task)
-  (loop for seed-id below (task-source-seeds task)
+  (loop for seed-id below (length (task-source-seeds task))
      collect (simple-wave-from-task-one-seed task seed-id)))
 
 (defun simple-wave-from-task-json (task-file seed-id &optional tag)
