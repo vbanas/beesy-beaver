@@ -13,8 +13,7 @@
 (quicklisp:quickload "alexandria")
 (quicklisp:quickload "fset")
 (quicklisp:quickload "yason")
-;;; optional for vizualizator
-(quicklisp:quickload "hunchentoot")
+(quicklisp:quickload "apply-argv")
 (quicklisp:quickload "ironclad")
 (quicklisp:quickload "babel")
 
@@ -23,9 +22,7 @@
 
 ;;; load system
 (load "beesy-beaver.asd")
-;;; optional
-(load "src/visualizator/backend/visualizator-backend.asd")
-(asdf:load-system :visualizator-backend)
+
 (asdf:load-system :beesy-beaver)
 
 (print "Welcome to the beesy-beaver")

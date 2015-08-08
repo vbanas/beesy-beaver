@@ -1,4 +1,12 @@
 
+function make_score_str (score_value) {
+    return "Score : " + score_value;
+}
+
+function make_units_left_str (units_left_value) {
+    return "Units left : " + units_left_value;
+}
+
 //svg sizes and margins
 var margin = {
     top: 30,
@@ -10,15 +18,7 @@ var margin = {
 var width = $(window).width() - margin.left - margin.right - 40;
 var height = $(window).height() - margin.top - margin.bottom - 80;
 
-//Calculate the center positions of each hexagon	
-// var points = [];
-// for (var i = 0; i < MapRows; i++) {
-//     for (var j = 0; j < MapColumns; j++) {
-//         points.push([hexRadius * j * 1.75, hexRadius * i * 1.5]);
-//     }//for j
-// }//for i
-
-function draw_honeycomb (columns, rows, points, pivot, score) {
+function draw_honeycomb (columns, rows, points, pivot, score, units_left) {
     //The maximum radius the hexagons can have to still fit the screen
     var hexRadius = d3.min([width/((columns + 0.5) * Math.sqrt(3)),
 			    height/((rows + 1/3) * 1.5)]);
@@ -27,7 +27,8 @@ function draw_honeycomb (columns, rows, points, pivot, score) {
     var hexbin = d3.hexbin().radius(hexRadius);
 
     d3.select ("svg").remove ();
-    d3.select ("#score-value").text (score);
+    d3.select ("#score-value").text (make_score_str (score));
+    d3.select ("#units-left-value").text (make_units_left_str (units_left));
 
     var coords = [];
     for (var i = 0; i < rows; i++) {
