@@ -3,11 +3,19 @@
 (defun wave-state-id (state)
   (with-slots (pivot unit-cells unit-generator) state
     (let* ((cpivot (pos-to-cube pivot))
-           (cunit (pos-to-cube (car unit-cells)))
-           (crot (cube-pos-sub cunit cpivot)))
+           (crot (mapcar (lambda (cell)
+                           (let ((cpos (cube-pos-sub (pos-to-cube cell) cpivot)))
+                             (list (cube-pos-x cpos)
+                                   (cube-pos-y cpos)
+                                   (cube-pos-z cpos))))
+                         unit-cells)))
       (list (pos-row pivot) (pos-col pivot)
-            (cube-pos-x crot) (cube-pos-y crot) (cube-pos-z crot)
+            crot
             (unit-generator-units-left unit-generator)))))
+
+(defvar *vert-coef* 70)
+(defvar *horiz-coef* 4)
+(defvar *hole-coef* 5)
 
 (defun estimate-field (field)
   (let ((vert-compactness 0)
@@ -15,6 +23,7 @@
         (horiz-nums (make-array *width* :initial-element 0))
         (num-holes 0)
         (sum-heights 0)
+        (filled 0)
         (avg-height)
         (horiz-planarity 0))
     (loop for row below *height*
@@ -31,6 +40,7 @@
                     (incf num-holes))
                   (when (not (zerop val))
                     (incf vert-compactness row)
+                    (incf filled)
                     (when (< row min-row)
                       (setf min-row row))
                     (incf (aref horiz-nums col))))))
@@ -40,12 +50,20 @@
     ;; TODO: Squares here
     (loop for val across horiz-nums
        do (incf horiz-planarity (abs (- val avg-height))))
-    ;; (format t "Estimated ~A ~A ~A~%"
-    ;;         min-row horiz-planarity num-holes)
-    ;; TODO: Coefs here
-    (+ (floor vert-compactness *height*)
-       (- (* *width* *height*) horiz-planarity)
-       (- (* 10 *width* *height*) (* 10 num-holes)))))
+    (let* ((vc-est (/ vert-compactness filled))
+           (hp-est (- (* *width* *height*) horiz-planarity))
+           (nh-est (- (* *width* *height*) num-holes))
+           (total-est (+ (* *vert-coef* vc-est)
+                         (* *horiz-coef* hp-est)
+                         (* *hole-coef* nh-est))))
+      ;; (format t "~A~%" field)
+      ;; (format t "Estimated: vert comp: ~A, horiz-planarity: ~A, num-holes: ~A~%"
+      ;;         vc-est hp-est nh-est)
+      ;; (format t "Total: ~A~%"
+      ;;         total-est)
+      ;; (read-line)
+      ;; TODO: Coefs here
+      total-est)))
 
 (defun one-unit-wave (state)
   (let ((visited (make-hash-table :test #'equal))
@@ -54,14 +72,17 @@
         (best-state-est -99999999)
         (best-path nil))
     (labels ((%estimate (state old-pivot)
-               ;;(declare (ignore old-pivot))
-               (+ (1+ (pos-row old-pivot)) 
-                ;;(estimate-field (gs-field state))
+               (declare (ignore old-pivot))
+               (* ;;(1+ (pos-row old-pivot)) 
+                (estimate-field (gs-field state))
+                ;; (if (gs-cleared-prev state)
+                ;;     5000
+                ;;     0)
                 (gs-score state)))
              (%add-and-visit (state-data)
                (destructuring-bind (state locked-cnt locked-list path pivot-before-move) state-data
-                 ;; (format t "Considering ~A (est ~A) (key ~A) (visited ~A)~%" (reverse path) (%estimate state pivot-before-move)
-                 ;;         (wave-state-id state) (gethash (wave-state-id state) visited))
+                 ;; (format t "Considering ~A (est A) (key ~A) (visited ~A)~%" (reverse path) #|(%estimate state pivot-before-move)|#
+                 ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
                  (let* ((finished (or (>= locked-cnt 1)
                                       (gs-terminal? state)))
                         (id (cons locked-list (wave-state-id state))))
@@ -167,3 +188,25 @@
                 state
                 (estimate-field (gs-field state))
                 path)))))
+
+(defun try-coefs (task-file seed-id)
+  (let ((all nil))
+    (loop for vertc = 70 then (+ vertc 10) while (< vertc 100) do
+         (loop for horizc = 4 then (+ horizc 10) while (< horizc 50) do
+              (loop for holesc = 5 then (+ holesc 10) while (< holesc 50) do
+                   (format t "Running with ~A, ~A, ~A~%"
+                           vertc horizc holesc)
+                   (let ((*vert-coef* vertc)
+                         (*horiz-coef* horizc)
+                         (*hole-coef* holesc))
+                     (multiple-value-bind (json state)
+                         (simple-wave-from-task-json task-file seed-id)
+                         (declare (ignore json))
+                       (let ((score (gs-score state)))
+                         (format t "Score = ~A~%" score)
+                         (push (list score vertc horizc holesc)
+                               all)))))))
+    (format t "Result: ~%")
+    (loop for (score vertc horizc holesc) in (sort all #'> :key #'car)
+         do (format t "~A : ~A, ~A, ~A~%"
+                    score vertc horizc holesc))))
