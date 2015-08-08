@@ -279,7 +279,7 @@
                (ironclad:digest-sequence
                 'ironclad:sha1
                 (babel:string-to-octets
-                 (format nil "~A~A[~A~A][~A~A~A]~A~A~A~A"
+                 (format nil "~A|~A[~A|~A][~A|~A|~A]~A|~A|~A|~A"
                          field-hash
                          units-left
                          (pos-row pivot)
