@@ -11,15 +11,25 @@
   <body>
     
     <a id="get-current-map" href="#">Get current map</a>
-   
+    
     <div id="info-div">
       <span id="score-value">Score : 0</span>
       <span id="units-left-value">Units left : 0</span>
     </div>
-    
-    <input id="command-value" type="text" autocomplete="off" size="100"/>
-    <a id="send-command" href="#">Send command</a>
 
+    <div id="send-command-div">
+      <input id="command-value" type="text" autocomplete="off" size="100"/>
+      <a id="send-command" href="#">Send command</a>
+    </div>
+
+    <div id="simulate-level-div">
+      <span>file:</span>
+      <input id="level-file-value" type="text" size="70" margin-right="5" autocomplete="on" />
+      <span>seed:</span>
+      <input id="seed-index-value" type="text" size="5" margin-left="5" />
+      <a id="simulate-level" href="#">Simulate</a>
+    </div>
+    
     <div id="chart"></div>
 
     <script type="text/javascript" src="honeycomb.js"></script>

@@ -14,6 +14,7 @@
      result)
     (get-output-stream-string result)))
 
+
 (define-easy-handler (send-command :uri "/send-command") (command)
   (setf (content-type*) "application/json")
   (setf *current-game-state*
@@ -24,6 +25,17 @@
      result)
     (get-output-stream-string result)))
 
+
+(define-easy-handler (simulate :uri "/simulate") (file seed)
+  (setf (content-type*) "application/json")
+  (let ((seed-int (parse-integer seed)))
+    (multiple-value-bind (task solution)
+        (bb::get-one-solution-for-file (pathname file) seed-int) 
+      (setf *current-game-state*
+            (bb::initial-state task seed-int))
+      solution)))
+
+
 (defun get-current-map ()
   (let ((units (bb::gs-unit-cells *current-game-state*))
         (field (bb::gs-field *current-game-state*))
@@ -33,8 +45,8 @@
     (list (cons :columns bb::*width*)
           (cons :rows bb::*height*)
           (cons :points
-                (loop for row below bb::*width* append
-                     (loop for column below bb::*height* collect
+                (loop for row below bb::*height* append
+                     (loop for column below bb::*width* collect
                           (bb::get-cell field (bb::make-pos row column)))))
           (cons :pivot (list (cons :row (bb::pos-row pivot))
                              (cons :col (bb::pos-col pivot))))
