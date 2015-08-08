@@ -142,10 +142,11 @@
 
 (defun simple-wave-from-task-one-seed (task seed-id)
   (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
-    (declare (ignore state))
+    ;;(declare (ignore state))
     (let ((res (make-instance 'play-result
                               :seed (nth seed-id (task-source-seeds task))
                               :problemId (task-id task)
+			      :tag (format nil "~A_SCORE_~A" (task-id task) (gs-score state))
                               :solution (simple-encode-solution path))))
       res)))
 
