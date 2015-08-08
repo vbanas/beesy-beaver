@@ -127,15 +127,6 @@
                  (setf path (append (reverse new-path) path))))))
     (values state (reverse path))))
 
-(defun simple-encode-command (command)
-  (case command
-    (:west (elt "p'!.03" 0))
-    (:east (elt "bcefy2" 0))
-    (:south-west (elt "aghij4" 0))
-    (:south-east (elt "lmno 5" 0))
-    (:clockwise (elt "dqrvz1" 0))
-    (:counter-clockwise (elt "kstuwx" 0))))
-
 (defun simple-encode-solution (path)
   (coerce (mapcar #'simple-encode-command path)
           'string))
