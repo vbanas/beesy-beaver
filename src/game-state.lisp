@@ -7,7 +7,10 @@
   unit-cells
   unit-generator
   cleared-prev
-  terminal?)
+  terminal?
+  last-horiz-move
+  last-rotations
+  max-rotations)
 
 (defun update-cells (field func cells new-pos-l)
   (if (null cells)
@@ -30,7 +33,7 @@
 (defun update-rotate-cells (field cells pivot clockwise)
   (update-cells field
                 (lambda (cell)
-                  (rotate pivot cell clockwise))
+                  (validate-pos (rotate pivot cell clockwise)))
                 cells
                 nil))
 
@@ -50,6 +53,19 @@
            (values
             pivot
             new-cells))))))
+
+(defun updated-last-horiz-move (command last-move)
+  (case command
+    (:west :west)
+    (:east :east)
+    ((:south-west :south-east) nil)
+    (otherwise last-move)))
+
+(defun updated-last-rotations (command last-rotations)
+  (case command
+    (:clockwise (1+ last-rotations))
+    (:counter-clockwise (1- last-rotations))
+    (otherwise 0)))
 
 (defun lock-cells (field cells)
   (let ((*filled-rows* nil)
@@ -73,19 +89,72 @@
                          0)))
     (+ points line-bonus)))
 
+(defun equal-figures (cells1 cells2)
+  (labels ((%less (pos1 pos2)
+             (if (< (pos-row pos1)
+                    (pos-row pos2))
+                 t
+                 (if (= (pos-row pos1)
+                        (pos-row pos2))
+                     (< (pos-col pos1)
+                        (pos-col pos2))
+                     nil))))
+    (equalp (sort (copy-list cells1) #'%less)
+            (sort (copy-list cells2) #'%less))))
+
+(defun compute-max-rotations (pivot cells)
+  (let ((new-cells cells))
+    (loop for rot below 5
+         do (setf new-cells
+                  (mapcar (lambda (cell)
+                            (rotate pivot cell t))
+                          new-cells))
+         (when (equal-figures cells new-cells)
+           (return-from compute-max-rotations rot)))
+    5))
+
 (defun make-unit-generator (task seed-index)
-  (let ((units (make-array (length (task-units task))
-                           :initial-contents (task-units task)))
-        (rnumbers (lcgen (nth seed-index (task-source-seeds task))
-                         (task-source-length task))))
+  (let* ((units (make-array (length (task-units task))
+                            :initial-contents (task-units task)))
+         (unit-max-rots (make-array (length (task-units task))
+                                    :initial-contents (mapcar (lambda (unit)
+                                                                (compute-max-rotations
+                                                                 (unit-pivot unit)
+                                                                 (unit-members unit)))
+                                                              (task-units task))))
+         (rnumbers (lcgen (nth seed-index (task-source-seeds task))
+                          (task-source-length task))))
     (lambda ()
       (let* ((num (pop rnumbers))
-            (unit (and num (aref units (mod num (array-dimension units 0))))))
+             (unit (and num (aref units (mod num (array-dimension units 0)))))
+             (max-rot (and num (aref unit-max-rots (mod num (array-dimension units 0))))))
         (when unit
-          (unit-start-position (unit-pivot unit) (unit-members unit)))))))
+          (multiple-value-bind (pivot members)
+              (unit-start-position (unit-pivot unit) (unit-members unit))
+            (values pivot members max-rot)))))))
+
+(defun allowed-commands (state)
+  (with-slots (last-horiz-move last-rotations max-rotations) state
+    (append
+     (case last-horiz-move
+       (:west (list :west :south-east :south-west))
+       (:east (list :east :south-east :south-west))
+       (otherwise (list :east :west :south-east :south-west)))
+     (cond ((= max-rotations 0)
+            nil)
+           ((= last-rotations 0)
+            (list :clockwise :counter-clockwise))
+           ((> last-rotations 0)
+            (if (< last-rotations max-rotations)
+                (list :clockwise)
+                nil))
+           (t
+            (if (> last-rotations (- max-rotations))
+                (list :counter-clockwise)
+                nil))))))
 
 (defun next-state (cur-state command)
-  (with-slots (field score pivot unit-cells unit-generator cleared-prev)
+  (with-slots (field score pivot unit-cells unit-generator cleared-prev last-rotations last-horiz-move max-rotations)
       cur-state
     (multiple-value-bind (new-pivot new-cells)
         (update-command-cells field pivot unit-cells command)
@@ -93,7 +162,7 @@
              (if (eq new-pivot :locked)
                  (multiple-value-bind (new-field removed-rows)
                      (lock-cells field unit-cells)
-                   (multiple-value-bind (pivot units) (funcall unit-generator)
+                   (multiple-value-bind (pivot units new-max-rot) (funcall unit-generator)
                      (if (and pivot
                               (check-cells new-field units))
                          (make-game-state :field new-field
@@ -102,26 +171,35 @@
                                           :unit-cells units
                                           :unit-generator unit-generator
                                           :cleared-prev removed-rows
-                                          :terminal? nil)
-                       (make-game-state :field new-field
-                                        :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                        :pivot nil
-                                        :unit-cells nil
-                                        :unit-generator unit-generator
-                                        :cleared-prev removed-rows
-                                        :terminal? t))))
-               (make-game-state :field field
-                                :score score
-                                :pivot new-pivot
-                                :unit-cells new-cells
-                                :unit-generator unit-generator
-                                :cleared-prev cleared-prev
-                                :terminal? nil))))
+                                          :terminal? nil
+                                          :last-horiz-move nil
+                                          :last-rotations 0
+                                          :max-rotations new-max-rot)
+                         (make-game-state :field new-field
+                                          :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                          :pivot nil
+                                          :unit-cells nil
+                                          :unit-generator unit-generator
+                                          :cleared-prev removed-rows
+                                          :last-horiz-move nil
+                                          :last-rotations 0
+                                          :max-rotations 0
+                                          :terminal? t))))
+                 (make-game-state :field field
+                                  :score score
+                                  :pivot new-pivot
+                                  :unit-cells new-cells
+                                  :unit-generator unit-generator
+                                  :cleared-prev cleared-prev
+                                  :last-horiz-move (updated-last-horiz-move command last-horiz-move)
+                                  :last-rotations (updated-last-rotations command last-rotations)
+                                  :max-rotations max-rotations
+                                  :terminal? nil))))
         (values new-state (gs-terminal? new-state))))))
 
 (defun initial-state (task seed-index)
   (let ((gen (make-unit-generator task seed-index)))
-    (multiple-value-bind (pivot units) (funcall gen)
+    (multiple-value-bind (pivot units max-rot) (funcall gen)
       (let ((state (make-game-state :field (task-field task)
                                     :score 0
                                     :pivot pivot
@@ -129,7 +207,9 @@
                                     :unit-generator gen
                                     :cleared-prev 0
                                     :terminal? nil
-                                    )))
+                                    :last-horiz-move nil
+                                    :last-rotations 0
+                                    :max-rotations max-rot)))
         (if (and pivot
                  (check-cells (task-field task) units))
             (values

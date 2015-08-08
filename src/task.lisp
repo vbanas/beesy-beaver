@@ -84,5 +84,29 @@
 ;;   , "solution":  Commands
 ;;   }
 ;; ]
-(defun encode-result ()
-  )
+(defclass play-result ()
+  ((problemId :accessor play-result-id
+	      :initarg :problemId)
+   (seed :accessor play-result-seed
+	 :initarg :seed)
+   (tag :accessor play-result-tag
+	:initarg :tag)
+   (solution :accessor play-result-solution
+	     :initarg :solution)))
+
+(defmethod yason:encode ((play-result play-result) &optional (stream *standard-output*))
+  (yason:with-output (stream)
+    (yason:with-object ()
+      (yason:encode-object-element "problemId" (play-result-id play-result))
+      (yason:encode-object-element "seed" (play-result-seed play-result))
+      (yason:encode-object-element "tag" (play-result-tag play-result))
+      (yason:encode-object-element "solution" (play-result-solution play-result)))))
+
+(defun test-result-encode ()
+  (let ((res (list (make-instance 'play-result 
+				  :problemId 1 :seed 0 
+				  :tag "test1" :solution "some command1")
+		   (make-instance 'play-result 
+				  :problemId 2 :seed 1 
+				  :tag "test2" :solution "some command2"))))
+    (yason:encode res)))
