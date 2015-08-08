@@ -33,8 +33,8 @@
     (list (cons :columns bb::*width*)
           (cons :rows bb::*height*)
           (cons :points
-                (loop for row below bb::*width* append
-                     (loop for column below bb::*height* collect
+                (loop for row below bb::*height* append
+                     (loop for column below bb::*width* collect
                           (bb::get-cell field (bb::make-pos row column)))))
           (cons :pivot (list (cons :row (bb::pos-row pivot))
                              (cons :col (bb::pos-col pivot))))
