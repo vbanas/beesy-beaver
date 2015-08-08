@@ -231,3 +231,13 @@
             (values
              state
              t))))))
+
+(defun state-identifier (state)
+  (with-slots (field pivot unit-cells) state
+    (sxhash
+     (list
+      (fset:reduce #'+ (fset:image #'car field))
+      (pos-row pivot)
+      (pos-col pivot)
+      (mapcar #'pos-row unit-cells)
+      (mapcar #'pos-col unit-cells)))))
