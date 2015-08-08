@@ -13,8 +13,7 @@
 (quicklisp:quickload "alexandria")
 (quicklisp:quickload "fset")
 (quicklisp:quickload "yason")
-;;; optional for vizualizator
-(quicklisp:quickload "hunchentoot")
+(quicklisp:quickload "apply-argv")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))
@@ -22,8 +21,11 @@
 ;;; load system
 (load "beesy-beaver.asd")
 ;;; optional
-(load "src/visualizator/backend/visualizator-backend.asd")
-(asdf:load-system :visualizator-backend)
+(defvar *load-visualizer* nil)
+(when *load-visualizer*
+  (quicklisp:quickload "hunchentoot")
+  (load "src/visualizator/backend/visualizator-backend.asd")
+  (asdf:load-system :visualizator-backend))
 (asdf:load-system :beesy-beaver)
 
 (print "Welcome to the beesy-beaver")
