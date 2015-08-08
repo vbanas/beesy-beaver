@@ -2,11 +2,11 @@
 
 (defun get-one-solution-for-file (file seed)
   (when (probe-file file)
-    (with-output-to-string (str)
-      (yason:encode (simple-wave-from-task-one-seed
-		     (decode-task (alexandria:read-file-into-string file)) seed)
-		    str)
-      str)))
+    (let ((task (decode-task (alexandria:read-file-into-string file))))
+      (values task (with-output-to-string (str)
+                     (yason:encode (simple-wave-from-task-one-seed
+                                    task seed)
+                                   str))))))
 
 (defun main ()
   (when sb-ext:*posix-argv*

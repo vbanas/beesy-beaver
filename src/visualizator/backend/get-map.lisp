@@ -14,6 +14,7 @@
      result)
     (get-output-stream-string result)))
 
+
 (define-easy-handler (send-command :uri "/send-command") (command)
   (setf (content-type*) "application/json")
   (setf *current-game-state*
@@ -23,6 +24,17 @@
      (get-current-map)
      result)
     (get-output-stream-string result)))
+
+
+(define-easy-handler (simulate :uri "/simulate") (file seed)
+  (setf (content-type*) "application/json")
+  (let ((seed-int (parse-integer seed)))
+    (multiple-value-bind (task solution)
+        (bb::get-one-solution-for-file (pathname file) seed-int) 
+      (setf *current-game-state*
+            (bb::initial-state task seed-int))
+      solution)))
+
 
 (defun get-current-map ()
   (let ((units (bb::gs-unit-cells *current-game-state*))
