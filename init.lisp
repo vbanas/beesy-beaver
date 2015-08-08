@@ -15,6 +15,8 @@
 (quicklisp:quickload "yason")
 ;;; optional for vizualizator
 (quicklisp:quickload "hunchentoot")
+(quicklisp:quickload "ironclad")
+(quicklisp:quickload "babel")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))
