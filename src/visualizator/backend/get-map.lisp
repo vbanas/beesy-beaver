@@ -3,6 +3,7 @@
 
 (declaim (optimize (debug 3)))
 
+(defvar *current-game-state*)
 
 (push (create-static-file-dispatcher-and-handler
        "/index.html" "src/visualizator/frontend/index.html")
@@ -39,9 +40,6 @@
      ;;   (-1 (get-prev-map)))
      result)
     (get-output-stream-string result)))
-
-
-(defvar *current-game-state*)
 
 (defun get-current-map ()
   (let ((units (beesy-beaver::gs-unit-cells *current-game-state*))
