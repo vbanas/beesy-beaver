@@ -90,7 +90,8 @@
    (seed :accessor play-result-seed
 	 :initarg :seed)
    (tag :accessor play-result-tag
-	:initarg :tag)
+	:initarg :tag
+        :initform nil)
    (solution :accessor play-result-solution
 	     :initarg :solution)))
 
@@ -99,7 +100,8 @@
     (yason:with-object ()
       (yason:encode-object-element "problemId" (play-result-id play-result))
       (yason:encode-object-element "seed" (play-result-seed play-result))
-      (yason:encode-object-element "tag" (play-result-tag play-result))
+      (when (play-result-tag play-result)
+        (yason:encode-object-element "tag" (play-result-tag play-result)))
       (yason:encode-object-element "solution" (play-result-solution play-result)))))
 
 (defun test-result-encode ()
