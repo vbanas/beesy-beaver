@@ -153,8 +153,7 @@
     (values state (reverse path))))
 
 (defun simple-encode-solution (path)
-  (coerce (mapcar #'simple-encode-command path)
-          'string))
+  (encode-commands-with-magic-words *magic-words* path))
 
 (defun simple-wave-from-task-one-seed (task seed-id)
   (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
