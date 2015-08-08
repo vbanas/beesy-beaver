@@ -32,7 +32,7 @@
                      :initform nil
                      :type list)))
 
-(defparameter *debug* nil)
+(defparameter *debug* t)
 
 (defmacro dprint (fmt &rest args)
   `(when *debug*
@@ -43,9 +43,7 @@
 
 (defun explore-state (initial-state iterations)
   (labels
-      ((%link (from to)
-         (push to (children from)))
-       (%new-node (parent state move)
+      ((%new-node (state move)
          (let* ((new-state (apply-move state move))
                 (new-node
                  (make-instance
@@ -54,39 +52,36 @@
                   :state new-state
                   :reward (estimate-reward new-state)
                   :moves-to-explore (shuffle (get-moves new-state)))))
-           (%link parent new-node)
            new-node))
        (%expand (node)
-         (dprint "expand: node ~A move ~A~%"
-                 (id node)
-                 (show-move
-                  (state node) (car (moves-to-explore node))))
          (let* ((move (pop (moves-to-explore node)))
-                (new-node (%new-node node (state node) move)))
+                (new-node (%new-node (state node) move)))
+           (dprint "expanded: node ~A to ~A move ~A, reward ~A:~%~A~%"
+                   (id node) (id new-node)
+                   (show-move (state new-node) move)
+                   (reward new-node)
+                   (show-state (state new-node)))
            (push new-node (children node))
            new-node))
        (%iterate (node)
-         (dprint "iterate: node ~A, state ~A~%"
+         (dprint "iterate: node ~A, state:~%~A~%"
                  (id node) (show-state (state node)))
          (when (and *debug* (moves-to-explore node))
            (dprint "iterate: moves to explore ~A~%"
                    (mapcar (curry #'show-move (state node))
                            (moves-to-explore node))))
          (incf (visits node))
-         (prog1
-             (if (moves-to-explore node)
-                 (reward (%expand node))
-                 (if (children node)
-                     (progn
-                       (%iterate (best-child node))
-                       (setf
-                        (reward node)
-                        (reduce #'max
-                                (mapcar #'reward (children node)))))
-                     (reward node)))
-           (dprint "iterate: node ~A, state ~A, reward ~A~%"
-                   (id node) (show-state (state node))
-                   (reward node)))))
+         (if (moves-to-explore node)
+             (%expand node)
+             (when (children node)
+               (%iterate (best-child node))))
+         (when (children node)
+           (setf
+            (reward node)
+            (reduce #'max
+                    (mapcar #'reward (children node)))))
+         (dprint "iterate: node ~A, reward ~A~%"
+                 (id node) (reward node))))
     (let ((root-node (make-instance
                       'node
                       :move nil
@@ -117,9 +112,9 @@
                        rank/node)))
                (children node)
                :initial-value nil))))
-    (if (or (= 0 (random 2)) reward)
-        (%scan #'> #'reward)
-        (%scan #'< #'visits))))
+    (if (and (= 0 (random 2)) (null reward))
+        (%scan #'< #'visits)
+        (%scan #'> #'reward))))
 
 ;; (defun rank-node (parent node)
 ;;   (+ (reward node)
@@ -132,17 +127,30 @@
 
 (defmethod get-moves ((state beesy-beaver::game-state))
   (unless (beesy-beaver::gs-terminal? state)
-    (list :west :east :south-west :south-east
-          :clockwise :counter-clockwise)))
+    (beesy-beaver::allowed-commands
+     state)))
 
 (defmethod apply-move ((state beesy-beaver::game-state) move)
   (beesy-beaver::next-state state move))
 
 (defmethod estimate-reward ((state beesy-beaver::game-state))
-  (loop while (not (beesy-beaver::gs-terminal? state)) do
-       (setf state (apply-move
-                    state (random-elt (get-moves state)))))
-  (beesy-beaver::gs-score state))
+  (dprint "estimate-reward:~%~A~%" state)
+  (let ((st (beesy-beaver::copy-game-state state)))
+    (loop
+       (when (beesy-beaver::gs-terminal? st)
+         (return))
+       (let ((move (random-elt (get-moves st))))
+         (dprint "estimate-reward: move ~A~%" move)
+         (setf st (apply-move st move))))
+    (dprint "estimate-reward final:~%~A~%" st)
+    (beesy-beaver::gs-score st)))
+
+(defmethod show-state ((state beesy-beaver::game-state))
+  ;;state
+  nil)
+
+(defmethod show-move ((state beesy-beaver::game-state) move)
+  move)
 
 (defun play-tetris (initial-state iterations)
   (mapcar
