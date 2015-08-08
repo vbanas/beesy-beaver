@@ -1,5 +1,6 @@
 (defpackage :beesy-beaver
-  (:use :common-lisp))
+  (:use :common-lisp)
+  (:nicknames :bb))
 
 (defpackage :search
   (:use :common-lisp :alexandria

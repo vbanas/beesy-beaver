@@ -121,6 +121,15 @@
      "/usr/bin/google-chrome" (list (format nil "~A.svg" file))
      :wait nil)))
 
+(defun draw-search-tree-for-file (json-file dot-file iterations)
+  (search-tree-to-dot
+   (explore-state
+    (bb::initial-state
+     (bb::decode-task
+      (alexandria:read-file-into-string json-file)) 0)
+    iterations)
+   dot-file))
+
 (defparameter *magical-c* 1)
 
 (defun best-child (node &key (reward nil))
