@@ -1,8 +1,16 @@
 (in-package :beesy-beaver)
 
+(defun get-one-solution-for-file (file seed)
+  (when (probe-file file)
+    (with-output-to-string (str)
+      (yason:encode (simple-wave-from-task-one-seed
+		     (decode-task (alexandria:read-file-into-string file)) seed)
+		    str)
+      str)))
+
 (defun main ()
   (when sb-ext:*posix-argv*
-    (let* ((parsed-args (apply-argv:parse-argv* ;;'("./test" "-f" "problems/problem_0.json" "-f" "problems/problem_1.json")))
+    (let* ((parsed-args (apply-argv:parse-argv* ;;'("./test" "-f" "problems/problem_24.json")))
 			 sb-ext:*posix-argv*))
 	   (files) (phrases) (time) (memory) (proc-count))
       ;;(format t "~A~%~A~%" parsed-args (alexandria:plist-alist (cdr parsed-args)))
