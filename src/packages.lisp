@@ -2,4 +2,5 @@
   (:use :common-lisp))
 
 (defpackage :search
-  (:use :common-lisp :alexandria))
+  (:use :common-lisp :alexandria
+        :beesy-beaver))

@@ -97,24 +97,26 @@
 
 (defun search-tree-to-dot (node file)
   (let ((queue (list node)))
-    (with-open-file (*standard-output*
+    (with-open-file (stream
                      file
                      :if-exists :supersede
                      :if-does-not-exist :create
                      :direction :output)
-      (format t "digraph G {~%")
+      (format stream "digraph G {~%")
       (loop while queue do
            (let* ((node (pop queue))
                   (children (children node)))
              (setf queue (append children queue))
-             (format t "  ~A [label=\"~A\"]~%" (id node) (reward node))
+             (format stream "  ~A [label=\"~A ~A\"]~%" (id node) (reward node)
+                     (beesy-beaver::state-identifier (state node)))
              (dolist (ch children)
-               (format t "  ~A -> ~A;~%" (id node) (id ch)))
+               (format stream "  ~A -> ~A;~%" (id node) (id ch)))
              ))
-      (format t "}~%"))
+      (format stream "}~%"))
     (sb-ext:run-program
-     "/usr/bin/dot" (list "-Tsvg" "-O")
-     :error *error-output*)
+     "/usr/bin/dot" (list "-Tsvg" "-O" file)
+     :error *error-output*
+     :wait t)
     (sb-ext:run-program
      "/usr/bin/google-chrome" (list (format nil "~A.svg" file))
      :wait nil)))
