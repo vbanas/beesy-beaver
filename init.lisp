@@ -22,12 +22,7 @@
 
 ;;; load system
 (load "beesy-beaver.asd")
-;;; optional
-(defvar *load-visualizer* nil)
-(when *load-visualizer*
-  (quicklisp:quickload "hunchentoot")
-  (load "src/visualizator/backend/visualizator-backend.asd")
-  (asdf:load-system :visualizator-backend))
+
 (asdf:load-system :beesy-beaver)
 
 (print "Welcome to the beesy-beaver")
