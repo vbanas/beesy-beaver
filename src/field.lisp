@@ -123,7 +123,7 @@
          (ccell (pos-to-cube cell))
          (rotated (cube-rotate (cube-pos-sub ccell cpivot)
                                clockwise)))
-    (validate-pos (cube-to-pos (cube-pos-add cpivot rotated)))))
+    (cube-to-pos (cube-pos-add cpivot rotated))))
  
 ;; Little benchmarking
 
