@@ -54,9 +54,9 @@
         (best-state-est -99999999)
         (best-path nil))
     (labels ((%estimate (state old-pivot)
-               (declare (ignore old-pivot))
-               (+ ;;(1+ (pos-row old-pivot)) 
-                (estimate-field (gs-field state))
+               ;;(declare (ignore old-pivot))
+               (+ (1+ (pos-row old-pivot)) 
+                ;;(estimate-field (gs-field state))
                 (gs-score state)))
              (%add-and-visit (state-data)
                (destructuring-bind (state locked-cnt locked-list path pivot-before-move) state-data
