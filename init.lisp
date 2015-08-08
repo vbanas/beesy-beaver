@@ -21,6 +21,8 @@
 
 ;;; load system
 (load "beesy-beaver.asd")
+;;; optional
+(load "src/visualizator/backend/visualizator-backend.asd")
 (asdf:load-system :beesy-beaver)
 
 (print "Welcome to the beesy-beaver")
