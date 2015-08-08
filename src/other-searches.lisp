@@ -87,7 +87,7 @@
     (let ((res (make-instance 'play-result
                               :seed (nth seed-id (task-source-seeds task))
                               :problemId (task-id task)
-			      :tag (format nil "SCORE_~A" (gs-score state))
+			      :tag (format nil "~A_SCORE_~A" (task-id task) (gs-score state))
                               :solution (simple-encode-solution path))))
       res)))
 
