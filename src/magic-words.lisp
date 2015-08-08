@@ -16,13 +16,15 @@
    0))
 
 (defun encode-commands-with-magic-words (words commands)
-  (mapcar (lambda (cmd)
-            (if (symbolp cmd)
-                (simple-encode-command cmd)
-                cmd))
-          (insert-magic-words
-           (make-command-seq-matching-tree words)
-           commands)))
+  (coerce
+   (mapcar (lambda (cmd)
+             (if (symbolp cmd)
+                 (simple-encode-command cmd)
+                 cmd))
+           (insert-magic-words
+            (make-command-seq-matching-tree words)
+            commands))
+   'string))
 
 (defparameter *letters-to-commands-map*
   (let ((map (make-hash-table)))
@@ -164,10 +166,10 @@
     (encode-commands-with-magic-words
      '("32" "34")
      '(:west :east :SOUTH-WEST :west :east :west :SOUTH-WEST))
-    '(#\3 #\2 #\a #\3 #\2 #\3 #\4)))
+    "32a3234"))
   (assert
    (equalp
     (encode-commands-with-magic-words
      '("32")
      '(:west :east :SOUTH-WEST :west :east))
-    '(#\3 #\2 #\a #\3 #\2))))
+    "32a32")))
