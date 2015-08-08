@@ -9,5 +9,6 @@
                (:file "src/game-state" :depends-on ("src/packages" "src/field" "src/task" "src/utils" "src/lcgen"))
                (:file "src/lcgen" :depends-on ("src/packages"))
                (:file "src/task" :depends-on ("src/packages" "src/field"))
+               (:file "src/other-searches" :depends-on ("src/packages" "src/game-state" "src/task"))
                ))
 

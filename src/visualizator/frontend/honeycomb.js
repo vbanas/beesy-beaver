@@ -18,7 +18,7 @@ var height = $(window).height() - margin.top - margin.bottom - 80;
 //     }//for j
 // }//for i
 
-function draw_honeycomb (columns, rows, points, score) {
+function draw_honeycomb (columns, rows, points, pivot, score) {
     //The maximum radius the hexagons can have to still fit the screen
     var hexRadius = d3.min([width/((columns + 0.5) * Math.sqrt(3)),
 			    height/((rows + 1/3) * 1.5)]);
@@ -36,6 +36,7 @@ function draw_honeycomb (columns, rows, points, score) {
         }//for j
     }//for i
 
+    var hexbins = hexbin (coords);
 
     //Create SVG element
     var svg = d3.select("#chart").append("svg")
@@ -45,9 +46,10 @@ function draw_honeycomb (columns, rows, points, score) {
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
     //Start drawing the hexagons
-    svg.append("g")
+    var hexagons =
+        svg.append("g")
         .selectAll(".hexagon")
-        .data(hexbin(coords))
+        .data(hexbins)
         .enter()
         .append("path")
         .attr("class", "hexagon")
@@ -65,4 +67,12 @@ function draw_honeycomb (columns, rows, points, score) {
                 return "#EAEAEB";
             }
         });
+
+    var hexbin_element = hexbins[pivot.ROW * columns + pivot.COL];
+
+    svg.append ("circle")
+        .attr("cx", hexbin_element.x)
+        .attr("cy", hexbin_element.y)
+        .attr("r", "5")
+        .style("fill", "#abcdef");
 }

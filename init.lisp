@@ -14,6 +14,8 @@
 (quicklisp:quickload "fset")
 (quicklisp:quickload "yason")
 (quicklisp:quickload "apply-argv")
+(quicklisp:quickload "ironclad")
+(quicklisp:quickload "babel")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))

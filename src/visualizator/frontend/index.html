@@ -22,22 +22,21 @@
     <a id="send-command" href="#">Send command</a>
 
     <script>
+      function update_data(data) {
+      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.PIVOT, data.SCORE);
+      }
+      
       d3.select("#get-current-map")
       .on("click", function () {
-      $.get("/get-map?pos=o", function (data) {
-      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE);
-      })});
+      $.get("/get-map?pos=o", update_data)});
+
+      
+      function send_command (command) {
+      $.get("/send-command?command=" + command, update_data)}
 
       d3.select("#send-command")
       .on("click", function() {
-        $.get("/send-command?command=" + d3.select("#command-value").property("value"),
-      function (data) {
-      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE); });});
-
-      function send_command (command) {
-      $.get("/send-command?command=" + command, 
-      function (data) {
-      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.SCORE); })}
+        send_command(d3.select("#command-value").property("value"));});
 
       d3.select("body").on("keydown", function () {
       var code = d3.event.keyCode;

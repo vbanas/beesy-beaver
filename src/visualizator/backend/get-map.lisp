@@ -43,7 +43,8 @@
 
 (defun get-current-map ()
   (let ((units (beesy-beaver::gs-unit-cells *current-game-state*))
-        (field (beesy-beaver::gs-field *current-game-state*)))
+        (field (beesy-beaver::gs-field *current-game-state*))
+        (pivot (beesy-beaver::gs-pivot *current-game-state*)))
     (loop for cell in units do
          (setf field (beesy-beaver::put-cell field cell 1)))
     (list (cons :columns beesy-beaver::*width*)
@@ -52,6 +53,8 @@
                 (loop for row below beesy-beaver::*width* append
                      (loop for column below beesy-beaver::*height* collect
                           (beesy-beaver::get-cell field (beesy-beaver::make-pos row column)))))
+          (cons :pivot (list (cons :row (beesy-beaver::pos-row pivot))
+                             (cons :col (beesy-beaver::pos-col pivot))))
           (cons :score (beesy-beaver::gs-score *current-game-state*)))))
 
 
