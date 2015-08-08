@@ -53,7 +53,7 @@
                   :move move
                   :state new-state
                   :reward (estimate-reward new-state)
-                  :moves-to-explore (get-moves new-state))))
+                  :moves-to-explore (shuffle (get-moves new-state)))))
            (%link parent new-node)
            new-node))
        (%expand (node)
@@ -140,18 +140,17 @@
 
 (defmethod estimate-reward ((state beesy-beaver::game-state))
   (loop while (not (beesy-beaver::gs-terminal? state)) do
-       (let ((moves (get-moves state)))
-         (setf state (apply-move
-                      state
-                      (nth (random (length moves)) moves)))))
+       (setf state (apply-move
+                    state (random-elt (get-moves state)))))
   (beesy-beaver::gs-score state))
 
 (defun play-tetris (initial-state iterations)
   (mapcar
    #'move
-   (collect-best-children
-    (explore-state
-     initial-state iterations))))
+   (cdr ;; first elt is a move of root state (nil)
+    (collect-best-children
+     (explore-state
+      initial-state iterations)))))
 
 
 ;; ----------------------------------------
@@ -196,8 +195,7 @@
 
 (defun collect-best-children (node)
   (loop while node
-     collect (test-state-current-node
-              (state node))
+     collect node
      do (setf node (best-child node :reward t))))
 
 (defun test-explore-state (graph-spec)
@@ -210,7 +208,8 @@
                  (make-test-state :graph graph
                                   :current-node 'start)
                  100)))
-      (collect-best-children node))))
+      (mapcar (compose #'test-state-current-node #'state)
+              (collect-best-children node)))))
 
 (defun test-1 ()
   (assert
