@@ -116,7 +116,8 @@
 (defstruct (unit-generator (:constructor mk-ug))
   rnumbers
   units
-  max-rots)
+  max-rots
+  units-left)
 
 (defun make-unit-generator (task seed-index)
   (let* ((units (make-array (length (task-units task))
@@ -128,13 +129,15 @@
                                                                  (unit-members unit)))
                                                               (task-units task))))
          (rnumbers (lcgen (nth seed-index (task-source-seeds task))
-                          (task-source-length task))))
+                          (task-source-length task)))
+         (units-left (length rnumbers)))
     (mk-ug :rnumbers rnumbers
            :units units
-           :max-rots unit-max-rots)))
+           :max-rots unit-max-rots
+           :units-left units-left)))
 
 (defun generate-new-unit (gen)
-  (with-slots (rnumbers units max-rots) gen
+  (with-slots (rnumbers units max-rots units-left) gen
     (let* ((num (car rnumbers))
            (unit (and num (aref units (mod num (array-dimension units 0)))))
            (max-rot (and num (aref max-rots (mod num (array-dimension units 0))))))
@@ -144,7 +147,8 @@
           (values pivot members max-rot
                   (mk-ug :rnumbers (cdr rnumbers)
                          :units units
-                         :max-rots max-rots)))))))
+                         :max-rots max-rots
+                         :units-left (1- units-left))))))))
 
 (defun allowed-commands (state)
   (with-slots (last-horiz-move last-rotations max-rotations) state
@@ -190,8 +194,8 @@
                                           :max-rotations new-max-rot)
                          (make-game-state :field new-field
                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                          :pivot nil
-                                          :unit-cells nil
+                                          :pivot (make-pos 0 0)
+                                          :unit-cells (list (make-pos 0 0))
                                           :unit-generator unit-generator
                                           :cleared-prev removed-rows
                                           :last-horiz-move nil
@@ -241,3 +245,50 @@
       (pos-col pivot)
       (mapcar #'pos-row unit-cells)
       (mapcar #'pos-col unit-cells)))))
+
+(defvar *field-hashes* (make-hash-table :test #'eq :weakness :key))
+
+(defun compute-field-big-hash (field)
+  (let ((lst nil))
+    (fset:do-seq (row field)
+      (fset:do-seq (col (cdr row))
+        (push col
+              lst)))
+    (format nil "~{~X~}"
+            (coerce (ironclad:digest-sequence 'ironclad:sha1 (coerce lst '(vector (unsigned-byte 8))))
+                    'list))))
+
+(defun field-big-hash (field)
+  (let ((res (gethash field *field-hashes*)))
+    (if res
+        res
+        (let ((hash (compute-field-big-hash field)))
+          (setf (gethash field *field-hashes*)
+                hash)
+          hash))))
+
+(defun state-big-hash (state)
+  (with-slots (field score pivot unit-cells unit-generator cleared-prev last-horiz-move last-rotations) state
+    (let* ((units-left (unit-generator-units-left unit-generator))
+           (field-hash (field-big-hash field))
+           (cpivot (pos-to-cube pivot))
+           (cunit (pos-to-cube (car unit-cells)))
+           (crot (cube-pos-sub cunit cpivot)))
+      (format nil "~{~X~}"
+              (coerce
+               (ironclad:digest-sequence
+                'ironclad:sha1
+                (babel:string-to-octets
+                 (format nil "~A~A[~A~A][~A~A~A]~A~A~A~A"
+                         field-hash
+                         units-left
+                         (pos-row pivot)
+                         (pos-col pivot)
+                         (cube-pos-x crot)
+                         (cube-pos-y crot)
+                         (cube-pos-z crot)
+                         score
+                         (if cleared-prev "1" "0")
+                         (if last-horiz-move last-horiz-move "0")
+                         last-rotations)))
+               'list)))))
