@@ -90,7 +90,7 @@
                               :solution (simple-encode-solution path))))
       res)))
 
-(defun simple-wave-from-task-one (task)
+(defun simple-wave-from-task (task)
   (loop for seed-id below (task-source-seeds task)
      collect (simple-wave-from-task-one-seed task seed-id)))
 
