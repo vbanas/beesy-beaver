@@ -32,7 +32,7 @@
                      :initform nil
                      :type list)))
 
-(defparameter *debug* t)
+(defparameter *debug* nil)
 
 (defmacro dprint (fmt &rest args)
   `(when *debug*
@@ -154,7 +154,8 @@
 
 (defun play-tetris (initial-state iterations)
   (mapcar
-   #'move
+   (lambda (node)
+     (cons (move node) (reward node)))
    (cdr ;; first elt is a move of root state (nil)
     (collect-best-children
      (explore-state
