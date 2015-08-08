@@ -9,13 +9,18 @@
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.3/jquery.js"></script>
   </head>
   <body>
-    <div id="chart"></div>
     
     <a id="get-current-map" href="#">Get current map</a>
    
-    <h3 id="score-value">Score : 0</h3>
+    <div id="info-div">
+      <span id="score-value">Score : 0</span>
+      <span id="units-left-value">Units left : 0</span>
+    </div>
+    
     <input id="command-value" type="text"/>
     <a id="send-command" href="#">Send command</a>
+
+    <div id="chart"></div>
 
     <script type="text/javascript" src="honeycomb.js"></script>
     <script type="text/javascript" src="events.js"></script>
