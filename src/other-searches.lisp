@@ -13,11 +13,11 @@
             crot
             (unit-generator-units-left unit-generator)))))
 
-(defvar *vert-coef* 70)
-(defvar *horiz-coef* 4)
-(defvar *hole-coef* 5)
+(defparameter *vert-coef* 70)
+(defparameter *horiz-coef* 4)
+(defparameter *hole-coef* 5)
 
-(defun estimate-field (field)
+(defun estimate-field (field lines-removed)
   (let ((vert-compactness 0)
         (min-row (1- *height*))
         (horiz-nums (make-array *width* :initial-element 0))
@@ -53,9 +53,11 @@
     (let* ((vc-est (/ vert-compactness filled))
            (hp-est (- (* *width* *height*) horiz-planarity))
            (nh-est (- (* *width* *height*) num-holes))
-           (total-est (+ (* *vert-coef* vc-est)
-                         (* *horiz-coef* hp-est)
-                         (* *hole-coef* nh-est))))
+           (total-est (* (+ (* *vert-coef* vc-est)
+                            (* *horiz-coef* hp-est)
+                            (* *hole-coef* nh-est))
+                         (+ lines-removed 1)
+                         min-row)))
       ;; (format t "~A~%" field)
       ;; (format t "Estimated: vert comp: ~A, horiz-planarity: ~A, num-holes: ~A~%"
       ;;         vc-est hp-est nh-est)
@@ -74,7 +76,7 @@
     (labels ((%estimate (state old-pivot)
                (declare (ignore old-pivot))
                (* ;;(1+ (pos-row old-pivot)) 
-                (estimate-field (gs-field state))
+                (estimate-field (gs-field state) (gs-cleared-prev state))
                 ;; (if (gs-cleared-prev state)
                 ;;     5000
                 ;;     0)
@@ -186,7 +188,7 @@
         (values (with-output-to-string (str)
                   (yason:encode (list res) str))
                 state
-                (estimate-field (gs-field state))
+                (estimate-field (gs-field state) (gs-cleared-prev state))
                 path)))))
 
 (defun try-coefs (task-file seed-id)
