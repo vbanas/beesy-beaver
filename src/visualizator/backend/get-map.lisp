@@ -13,6 +13,10 @@
        "/honeycomb.js" "src/visualizator/frontend/honeycomb.js")
       *dispatch-table*)
 
+(push (create-static-file-dispatcher-and-handler
+       "/events.js" "src/visualizator/frontend/events.js")
+      *dispatch-table*)
+
 
 (define-easy-handler (get-map :uri "/get-map") (pos)
   (declare (ignore pos))

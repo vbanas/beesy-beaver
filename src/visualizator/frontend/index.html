@@ -11,62 +11,13 @@
   <body>
     <div id="chart"></div>
     
-    <script type="text/javascript" src="honeycomb.js"></script>
-
-    <a id="get-prev-map" href="#" margin-right="5px">&lt&lt&lt</a>
     <a id="get-current-map" href="#">Get current map</a>
-    <a id="get-next-map" href="#" margin-left="5px">&gt&gt&gt</a>
-
+   
     <h3 id="score-value">Score : 0</h3>
     <input id="command-value" type="text"/>
     <a id="send-command" href="#">Send command</a>
 
-    <script>
-      function update_data(data) {
-      draw_honeycomb(data.COLUMNS, data.ROWS, data.POINTS, data.PIVOT, data.SCORE);
-      }
-      
-      d3.select("#get-current-map")
-      .on("click", function () {
-      $.get("/get-map?pos=o", update_data)});
-
-      
-      function send_command (command) {
-      $.get("/send-command?command=" + command, update_data)}
-
-      d3.select("#send-command")
-      .on("click", function() {
-        send_command(d3.select("#command-value").property("value"));});
-
-      d3.select("body").on("keydown", function () {
-      var code = d3.event.keyCode;
-      // a
-      if (code == 65) {
-      send_command("west");
-      }
-      // d
-      else if (code == 68) {
-      send_command("east");
-      }
-      // z
-      else if (code == 90) {
-      send_command("south-west");
-      }
-      // x
-      else if (code == 88) {
-      send_command("south-east");
-      }
-      // q
-      else if (code == 81) {
-      send_command("counter-clockwise");
-      }
-      // e
-      else if (code == 69) {
-      send_command ("clockwise");
-      }
-      });
-    </script>
-    
-
+    <script type="text/javascript" src="honeycomb.js"></script>
+    <script type="text/javascript" src="events.js"></script>
   </body>
 </html>
