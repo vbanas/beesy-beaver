@@ -54,9 +54,9 @@
         (best-state-est -99999999)
         (best-path nil))
     (labels ((%estimate (state old-pivot)
-               (declare (ignore old-pivot))
-               (+ ;;(1+ (pos-row old-pivot)) 
-                (estimate-field (gs-field state))
+               ;;(declare (ignore old-pivot))
+               (+ (1+ (pos-row old-pivot)) 
+                ;;(estimate-field (gs-field state))
                 (gs-score state)))
              (%add-and-visit (state-data)
                (destructuring-bind (state locked-cnt locked-list path pivot-before-move) state-data
@@ -142,10 +142,11 @@
 
 (defun simple-wave-from-task-one-seed (task seed-id)
   (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
-    (declare (ignore state))
+    ;;(declare (ignore state))
     (let ((res (make-instance 'play-result
                               :seed (nth seed-id (task-source-seeds task))
                               :problemId (task-id task)
+			      :tag (format nil "~A_SCORE_~A" (task-id task) (gs-score state))
                               :solution (simple-encode-solution path))))
       res)))
 
