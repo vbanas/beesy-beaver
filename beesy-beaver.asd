@@ -5,7 +5,7 @@
                (:file "src/field" :depends-on ("src/packages"))
                (:file "src/search" :depends-on ("src/packages"
                                                 "src/game-state"))
-               (:file "src/game-state" :depends-on ("src/packages" "src/field" "src/task" "src/utils"))
+               (:file "src/game-state" :depends-on ("src/packages" "src/field" "src/task" "src/utils" "src/lcgen"))
                (:file "src/lcgen" :depends-on ("src/packages"))
                (:file "src/task" :depends-on ("src/packages" "src/field"))
                ))

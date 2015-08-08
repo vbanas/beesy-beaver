@@ -113,6 +113,11 @@
            (return-from compute-max-rotations rot)))
     5))
 
+(defstruct (unit-generator (:constructor mk-ug))
+  rnumbers
+  units
+  max-rots)
+
 (defun make-unit-generator (task seed-index)
   (let* ((units (make-array (length (task-units task))
                             :initial-contents (task-units task)))
@@ -124,14 +129,22 @@
                                                               (task-units task))))
          (rnumbers (lcgen (nth seed-index (task-source-seeds task))
                           (task-source-length task))))
-    (lambda ()
-      (let* ((num (pop rnumbers))
-             (unit (and num (aref units (mod num (array-dimension units 0)))))
-             (max-rot (and num (aref unit-max-rots (mod num (array-dimension units 0))))))
-        (when unit
-          (multiple-value-bind (pivot members)
-              (unit-start-position (unit-pivot unit) (unit-members unit))
-            (values pivot members max-rot)))))))
+    (mk-ug :rnumbers rnumbers
+           :units units
+           :max-rots unit-max-rots)))
+
+(defun generate-new-unit (gen)
+  (with-slots (rnumbers units max-rots) gen
+    (let* ((num (car rnumbers))
+           (unit (and num (aref units (mod num (array-dimension units 0)))))
+           (max-rot (and num (aref max-rots (mod num (array-dimension units 0))))))
+      (when unit
+        (multiple-value-bind (pivot members)
+            (unit-start-position (unit-pivot unit) (unit-members unit))
+          (values pivot members max-rot
+                  (mk-ug :rnumbers (cdr rnumbers)
+                         :units units
+                         :max-rots max-rots)))))))
 
 (defun allowed-commands (state)
   (with-slots (last-horiz-move last-rotations max-rotations) state
@@ -162,14 +175,14 @@
              (if (eq new-pivot :locked)
                  (multiple-value-bind (new-field removed-rows)
                      (lock-cells field unit-cells)
-                   (multiple-value-bind (pivot units new-max-rot) (funcall unit-generator)
+                   (multiple-value-bind (pivot units new-max-rot new-gen) (generate-new-unit unit-generator)
                      (if (and pivot
                               (check-cells new-field units))
                          (make-game-state :field new-field
                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
                                           :pivot pivot
                                           :unit-cells units
-                                          :unit-generator unit-generator
+                                          :unit-generator new-gen
                                           :cleared-prev removed-rows
                                           :terminal? nil
                                           :last-horiz-move nil
@@ -199,12 +212,12 @@
 
 (defun initial-state (task seed-index)
   (let ((gen (make-unit-generator task seed-index)))
-    (multiple-value-bind (pivot units max-rot) (funcall gen)
+    (multiple-value-bind (pivot units max-rot new-gen) (generate-new-unit gen)
       (let ((state (make-game-state :field (task-field task)
                                     :score 0
                                     :pivot pivot
                                     :unit-cells units
-                                    :unit-generator gen
+                                    :unit-generator new-gen
                                     :cleared-prev 0
                                     :terminal? nil
                                     :last-horiz-move nil
