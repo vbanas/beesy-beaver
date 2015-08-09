@@ -271,7 +271,7 @@
          do (let ((new-states nil)
                   (*current-solutions* (make-solutions-box))
                   (*solutions-limit* 3))
-              (format *error-output* "Processing unit #~A~%" unit-num)
+              ;; (format *error-output* "Processing unit #~A~%" unit-num)
               (loop for (est state path) in states-to-try
                  do
                  ;; (format t "Est = ~A, Path = ~A~%" est path)
