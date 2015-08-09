@@ -1,10 +1,22 @@
 (in-package :beesy-beaver)
 
+(defvar *time-to-halt* nil)
+
+(defun set-timeout (seconds)
+  (setf *time-to-halt*
+        (+ (get-internal-real-time)
+           ;; 10 should be enough
+           (* (- seconds 10)
+              internal-time-units-per-second))))
+
+(defun time-expired? ()
+  (and *time-to-halt*
+       (>= (get-internal-real-time)
+           *time-to-halt*)))
 
 (defun min-max-list (min-fn key-fn list)
   (let ((keys (mapcar key-fn list)))
     (reduce min-fn (cdr keys) :initial-value (car keys))))
-
 
 (defun unit-start-position (pivot members)
   (let* ((left (min-max-list #'min #'pos-col members))
