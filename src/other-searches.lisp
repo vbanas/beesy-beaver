@@ -195,9 +195,6 @@
         (front (list (list state base-path)))
         (magic-words-front nil)
         (*solutions-by-pos* (make-hash-table :test #'equalp))
-        ;; (best-state state)
-        ;; (best-state-est -99999999)
-        ;; (best-path nil)
         (base-ests (raw-field-estimates (gs-field state) (gs-cleared-prev state))))
     (labels ((%estimate (lock-delta state old-pivot)
                (declare (ignore old-pivot))
@@ -205,9 +202,6 @@
                 (compute-estimate (update-estimate
                                    base-ests lock-delta
                                    (gs-field state) (gs-cleared-prev state)))
-                ;; (if (gs-cleared-prev state)
-                ;;     5000
-                ;;     0)
                 (gs-score state)
                 ))
              (%add-and-visit (state-data)
@@ -226,12 +220,6 @@
                                  t))
                          (if finished
                              (let ((est (%estimate *lock-delta* state pivot-before-move)))
-                               ;; (format t "Found finished ~A (~A > ~A)~%" path est best-state-est)
-                               ;; (when (> est
-                               ;;          best-state-est)
-                               ;;   (setf best-state state)
-                               ;;   (setf best-path path)
-                               ;;   (setf best-state-est est))
                                (add-solution-by-pos pivot-before-move state est path)
                                nil)
                              (list (list state path))))))))
