@@ -16,6 +16,8 @@
 (quicklisp:quickload "apply-argv")
 (quicklisp:quickload "ironclad")
 (quicklisp:quickload "babel")
+(quicklisp:quickload "cl-graph")
+(quicklisp:quickload "cl-heap")
 
 ;;; optimization options
 (proclaim '(optimize (debug 3) (safety 3)))

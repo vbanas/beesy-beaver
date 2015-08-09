@@ -35,6 +35,12 @@
 (defun get-cell (field pos)
   (fset:@ (cdr (fset:@ field (pos-row pos))) (pos-col pos)))
 
+(defun try-get-cell (field pos &optional default)
+  (let ((p1 (validate-pos pos)))
+    (if (eq p1 :invalid)
+        default
+        (get-cell field pos))))
+
 (defvar *filled-rows* nil)
 
 (defun put-cell (field pos val)
@@ -115,21 +121,13 @@
         (:south-east (incf new-row)
                      (when (oddp row)
                        (incf new-col)))
-        (otherwise (return-from move :invalid)))
-      (make-pos new-row new-col))))
-
-(defun move-up (pos dir)
-  (with-slots (row col) pos
-    (let ((new-row row)
-          (new-col col))
-      (case dir
         (:north-west (decf new-row)
                      (when (evenp row)
                        (decf new-col)))
         (:north-east (decf new-row)
                      (when (oddp row)
                        (incf new-col)))
-        (otherwise (return-from move-up :invalid)))
+        (otherwise (return-from move :invalid)))
       (make-pos new-row new-col))))
 
 (defun rotate (pivot cell clockwise)
@@ -323,3 +321,33 @@
       ;; (%test 4 2 3 3)
       
       (format t "Tests failed: ~A~%" failed))))
+
+
+(defun field-to-cl-graph (field)
+  (let ((graph (cl-graph:make-graph 'cl-graph:graph-container :vertex-test #'equalp)))
+    (loop for row below *height*
+       do (loop for col below *width*
+             do (let* ((val (get-cell field (make-pos row col))))
+                  (when (zerop val)
+                    (cl-graph:add-vertex graph (make-pos row col))
+                    (loop for cmd in '(:east :west :south-east :south-west :north-east :north-west)
+                       do (let* ((new-pos (move (make-pos row col) cmd))
+                                 (val2 (try-get-cell field new-pos 1)))
+                            (when (and (zerop val2))
+                              (cl-graph:add-edge-between-vertexes
+                               graph
+                               (make-pos row col)
+                               new-pos
+                               :edge-type :undirected
+                               :if-duplicate-do :ignore))))))))
+    graph))
+
+(defun print-field (field)
+  (let ((row-ind 0))
+    (fset:do-seq (row field)
+      (format t "~A~A~%"
+              (if (oddp row-ind)
+                  " "
+                  "")
+              (cdr row))
+      (incf row-ind))))
