@@ -24,35 +24,41 @@
         (sum-heights 0)
         (filled 0)
         (avg-height)
-        (horiz-planarity 0))
+        (horiz-planarity 0)
+        (almost-filled-rows 0))
     (loop for row below *height*
        do (loop for col below *width*
-             do (let* ((val (get-cell field (make-pos row col)))
-                       ;; TODO: correct up detection
-                       (up (validate-pos (make-pos (1- row) col)))
-                       (up-val (if (eq up :invalid)
-                                   nil
-                                   (get-cell field up))))
-                  (when (and up-val
-                             (zerop val)
-                             (not (zerop up-val)))
-                    (incf num-holes))
-                  (when (not (zerop val))
-                    (incf vert-compactness row)
-                    (incf filled)
-                    (when (< row min-row)
-                      (setf min-row row))
-                    (incf (aref horiz-nums col))))))
+             do
+               (when (= (1+ (row-filled field row))
+                        *width*)
+                 (incf almost-filled-rows))
+               (let* ((val (get-cell field (make-pos row col)))
+                      ;; TODO: correct up detection
+                      (up (validate-pos (make-pos (1- row) col)))
+                      (up-val (if (eq up :invalid)
+                                  nil
+                                  (get-cell field up))))
+                 (when (and up-val
+                            (zerop val)
+                            (not (zerop up-val)))
+                   (incf num-holes))
+                 (when (not (zerop val))
+                   (incf vert-compactness row)
+                   (incf filled)
+                   (when (< row min-row)
+                     (setf min-row row))
+                   (incf (aref horiz-nums col))))))
     (loop for val across horiz-nums
        do (incf sum-heights val))
     (setf avg-height (floor sum-heights *width*))
     ;; TODO: Squares here
     (loop for val across horiz-nums
        do (incf horiz-planarity (abs (- val avg-height))))
-    (list min-row lines-removed lines-removed vert-compactness avg-height horiz-nums filled num-holes num-holes horiz-planarity)))
+    (list min-row almost-filled-rows almost-filled-rows lines-removed lines-removed vert-compactness avg-height horiz-nums filled num-holes num-holes horiz-planarity)))
 
 (defun compute-estimate (raw-ests)
-  (destructuring-bind (min-row lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
+  (destructuring-bind (min-row almost-filled-rows old-almost-filled-rows lines-removed old-lines-removed
+                               vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
       raw-ests
     (let* ((vc-est (if (zerop filled)
                        1
@@ -61,6 +67,7 @@
                       (* *width* *height*)))
            (nh-est (expt 2.0 (- old-num-holes num-holes)))
            (ln-est (* (+ old-lines-removed 1)
+                      ;; (+ (- almost-filled-rows old-almost-filled-rows) 1)
                       lines-removed))
            (min-row-est (/ min-row (1- *height*)))
            (total-est (+ (* *vert-coef* vc-est)
@@ -81,26 +88,43 @@
   (compute-estimate (raw-field-estimates field lines-removed)))
 
 (defun update-estimate (raw-est lock-delta field lines-removed)
-  (destructuring-bind (min-row lines-removed-1 old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
+  (destructuring-bind (min-row almost-filled-rows old-almost-filled-rows lines-removed-1 old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
       raw-est
     (destructuring-bind (filled-rows cells) lock-delta
-      (loop for cell in cells do
-           (when (< (pos-row cell)
-                    min-row)
-             (setf min-row (pos-row cell)))
-           (incf filled)
-           (incf vert-compactness (pos-row cell))
-           (let ((sw (validate-pos (move cell :south-west)))
-                 (se (validate-pos (move cell :south-west))))
-             (when (or (and (not (eq sw :invalid))
-                            (zerop (get-cell field sw)))
-                       (and (not (eq se :invalid))
-                            (zerop (get-cell field se))))
-               (incf num-holes)))
-           (if (>= (aref horiz-nums (pos-col cell))
-                   avg-height)
-               (decf horiz-planarity)
-               (incf horiz-planarity)))
+      (let ((cur-filled filled-rows)
+            (delta-row (length filled-rows)))
+        (loop for cell in (sort (copy-list cells) #'< :key #'pos-row) do
+             (let ((cell (copy-pos cell)))
+               (loop while (and cur-filled
+                                (> (pos-row cell)
+                                   (car cur-filled)))
+                  do
+                    (decf delta-row)
+                    (pop cur-filled))
+               (unless (and cur-filled
+                            (= (pos-row cell)
+                               (car cur-filled)))
+                 (incf (pos-row cell)
+                       delta-row)
+                 (when (= (1+ (row-filled field (pos-row cell)))
+                          *width*)
+                   (incf almost-filled-rows))
+                 (when (< (pos-row cell)
+                          min-row)
+                   (setf min-row (pos-row cell)))
+                 (incf filled)
+                 (incf vert-compactness (pos-row cell))
+                 (let ((sw (validate-pos (move cell :south-west)))
+                       (se (validate-pos (move cell :south-west))))
+                   (when (or (and (not (eq sw :invalid))
+                                  (zerop (get-cell field sw)))
+                             (and (not (eq se :invalid))
+                                  (zerop (get-cell field se))))
+                     (incf num-holes)))
+                 (if (>= (aref horiz-nums (pos-col cell))
+                         avg-height)
+                     (decf horiz-planarity)
+                     (incf horiz-planarity))))))
       ;; (when (/= num-holes old-num-holes)
       ;;   (let ((graph (field-to-cl-graph field)))
       ;;     (setf num-holes (1- (cl-graph:connected-component-count graph)))
@@ -115,7 +139,7 @@
       ;;     ;;           num-holes)
       ;;     ;;   (read-line))
       ;;     ))
-      (list min-row lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity))))
+      (list min-row almost-filled-rows old-almost-filled-rows lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity))))
 
 (defvar *current-solutions*)
 (defvar *solutions-limit*)
@@ -233,7 +257,7 @@
     (loop while states-to-try
        do (let ((new-states nil)
                 (*current-solutions* (make-solutions-box))
-                (*solutions-limit* 5))
+                (*solutions-limit* 2))
             ;; (format t "Trying ~A variants~%" (length states-to-try))
             (loop for (est state path) in states-to-try
                do
