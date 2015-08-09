@@ -1,5 +1,10 @@
 (in-package :beesy-beaver)
 
+(declaim (optimize (debug 3)))
+
+(defparameter *magic-words-cst* nil)
+
+
 (defun wave-state-id (state)
   (with-slots (pivot unit-cells unit-generator) state
     (let* ((cpivot (pos-to-cube pivot))
@@ -69,22 +74,33 @@
       ;; TODO: Coefs here
       total-est)))
 
+
+(defun move-matching-words (command matching-words)
+  (remove nil
+          (mapcar (lambda (mw) (cst-next-state *magic-words-cst* mw command))
+                  (cons +cst-initial+ matching-words))))
+
+
 (defun one-unit-wave (state)
+  ;; front is list of wave-states
+  ;; wave-state is list of state path locked-cnt locked-list matching-words
+  ;; matching-words is list of states to match magic words (see magic-words.lisp)
   (let ((visited (make-hash-table :test #'equal))
-        (front (list (list state nil 0 nil)))
+        (front (list (list state nil 0 nil (list +cst-initial+))))
+        (magic-words-front nil)
         (best-state state)
         (best-state-est -99999999)
         (best-path nil))
     (labels ((%estimate (state old-pivot)
                (declare (ignore old-pivot))
-               (* ;;(1+ (pos-row old-pivot)) 
+               (* ;;(1+ (pos-row old-pivot))
                 (estimate-field (gs-field state) (gs-cleared-prev state))
                 ;; (if (gs-cleared-prev state)
                 ;;     5000
                 ;;     0)
                 (gs-score state)))
              (%add-and-visit (state-data)
-               (destructuring-bind (state locked-cnt locked-list path pivot-before-move) state-data
+               (destructuring-bind (state locked-cnt locked-list path pivot-before-move matching-words) state-data
                  ;; (format t "Considering ~A (est A) (key ~A) (visited ~A)~%" (reverse path) #|(%estimate state pivot-before-move)|#
                  ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
                  (let* ((finished (or (>= locked-cnt 1)
@@ -106,8 +122,8 @@
                                  (setf best-path path)
                                  (setf best-state-est est))
                                nil)
-                             (list (list state path locked-cnt locked-list))))))))
-             (%one-cell (state path locked-cnt locked-list)
+                             (list (list state path locked-cnt locked-list matching-words))))))))
+             (%one-cell (state path locked-cnt locked-list matching-words)
                (let* ((moves (allowed-commands state))
                       (new-states (mapcar (lambda (m)
                                             (let ((*was-locked* nil))
@@ -120,16 +136,29 @@
                                                               locked-list)
                                                         locked-list)
                                                     (cons m path)
-                                                    (gs-pivot state))))
+                                                    (gs-pivot state)
+                                                    (move-matching-words m matching-words))))
                                           moves)))
                  (mapcan #'%add-and-visit new-states)))
              (%run-wave ()
-               (setf front
-                     (mapcan (lambda (el)
-                               (%one-cell (first el) (second el) (third el) (fourth el)))
-                             front))
-               (when front
-                 (%run-wave))))
+               (let ((front-to-process (or magic-words-front front)))
+                 (if magic-words-front
+                     (setf magic-words-front nil)
+                     (setf front nil))
+                 (dolist (front-state front-to-process)
+                   (destructuring-bind (state path locked-cnt locked-list matching-words)
+                       front-state
+                     (let ((new-front-states (%one-cell state path locked-cnt locked-list matching-words)))
+
+                       (dolist (new-front-state new-front-states)
+                         ;; check matching-words
+                         (if (fifth new-front-state)
+                             (push new-front-state magic-words-front)
+                             (push new-front-state front)))))))
+
+               (when (or front magic-words-front)
+                 (%run-wave))
+               ))
       ;;(setf best-state-est (%estimate state (gs-pivot state)))
       (%run-wave)
       (values best-state (reverse best-path)))))
@@ -155,13 +184,14 @@
 (defun simple-encode-solution (path)
   (encode-commands-with-magic-words *magic-words* path))
 
+
 (defun simple-wave-from-task-one-seed (task seed-id)
   (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
     ;;(declare (ignore state))
     (let ((res (make-instance 'play-result
                               :seed (nth seed-id (task-source-seeds task))
                               :problemId (task-id task)
-			      :tag (format nil "~A_SCORE_~A" (task-id task) (gs-score state))
+                              :tag (format nil "~A_SCORE_~A" (task-id task) (gs-score state))
                               :solution (simple-encode-solution path))))
       res)))
 
@@ -195,12 +225,12 @@
                          (*hole-coef* holesc))
                      (multiple-value-bind (json state)
                          (simple-wave-from-task-json task-file seed-id)
-                         (declare (ignore json))
+                       (declare (ignore json))
                        (let ((score (gs-score state)))
                          (format t "Score = ~A~%" score)
                          (push (list score vertc horizc holesc)
                                all)))))))
     (format t "Result: ~%")
     (loop for (score vertc horizc holesc) in (sort all #'> :key #'car)
-         do (format t "~A : ~A, ~A, ~A~%"
-                    score vertc horizc holesc))))
+       do (format t "~A : ~A, ~A, ~A~%"
+                  score vertc horizc holesc))))

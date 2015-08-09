@@ -1,6 +1,7 @@
 (in-package :beesy-beaver)
 
 (defparameter *magic-words* nil)
+(defparameter *magic-words-cst* nil)
 
 ;; { "id": number              /* A unique number identifying the problem */
 
