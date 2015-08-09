@@ -31,6 +31,7 @@
 	(dolist (f (reverse files))			
 	  (when (probe-file f)
 	    ;;(format t "~A~%~%" (alexandria:read-file-into-string f))
+            (format *error-output* "Processing file ~A~%" f)
 	    (setf result-list 
 		  (append result-list (let ((*standard-output* *error-output*))
                                         (simple-wave-from-task 
