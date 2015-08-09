@@ -10,9 +10,9 @@
             crot
             (unit-generator-units-left unit-generator)))))
 
-(defparameter *vert-coef* 1)
+(defparameter *vert-coef* 20)
 (defparameter *horiz-coef* 10)
-(defparameter *hole-coef* 100)
+(defparameter *hole-coef* 10)
 (defparameter *lines-coef* 5)
 (defparameter *min-row-coef* 1)
 
@@ -101,46 +101,67 @@
                    avg-height)
                (decf horiz-planarity)
                (incf horiz-planarity)))
-      ;; (let ((graph (field-to-cl-graph field)))
-      ;;   (setf num-holes (1- (cl-graph:connected-component-count graph)))
-      ;;   ;; (when (> num-holes 1)
-      ;;   ;;   (print-field field)
-      ;;   ;;   (cl-graph:graph->dot graph #P"graph.dot"
-      ;;   ;;                        :edge-labeler (lambda (e s) (declare (ignore e s)))
-      ;;   ;;                        :vertex-labeler (lambda (v s) (format s "(~A, ~A)"
-      ;;   ;;                                                              (pos-row (cl-graph:element v))
-      ;;   ;;                                                              (pos-col (cl-graph:element v)))))
-      ;;   ;;   (format t "Holes: ~A~%"
-      ;;   ;;           num-holes)
-      ;;   ;;   (read-line))
-      ;;   )
+      ;; (when (/= num-holes old-num-holes)
+      ;;   (let ((graph (field-to-cl-graph field)))
+      ;;     (setf num-holes (1- (cl-graph:connected-component-count graph)))
+      ;;     ;; (when (> num-holes 1)
+      ;;     ;;   (print-field field)
+      ;;     ;;   (cl-graph:graph->dot graph #P"graph.dot"
+      ;;     ;;                        :edge-labeler (lambda (e s) (declare (ignore e s)))
+      ;;     ;;                        :vertex-labeler (lambda (v s) (format s "(~A, ~A)"
+      ;;     ;;                                                              (pos-row (cl-graph:element v))
+      ;;     ;;                                                              (pos-col (cl-graph:element v)))))
+      ;;     ;;   (format t "Holes: ~A~%"
+      ;;     ;;           num-holes)
+      ;;     ;;   (read-line))
+      ;;     ))
       (list min-row lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity))))
 
 (defvar *current-solutions*)
 (defvar *solutions-limit*)
 
 (defun make-solutions-box ()
-  ;;(make-instance 'cl-heap:fibonacci-heap :key #'car)
-  (list 0 nil nil))
+  (make-instance 'cl-heap:fibonacci-heap :key #'car)
+  ;;(list 0 nil nil)
+  )
+
+(defvar *solutions-by-pos*)
+
+(defun add-solution-by-pos (pos state estimate path)
+  (let ((old-res (gethash pos *solutions-by-pos*)))
+    (when (or (null old-res)
+              (> estimate (first old-res)))
+      (setf (gethash pos *solutions-by-pos*)
+            (list estimate state path)))))
+
+(defun flush-solutions ()
+  (maphash (lambda (pos val)
+             (declare (ignore pos))
+             (destructuring-bind (estimate state path) val
+               (add-solution state estimate path)))
+           *solutions-by-pos*))
 
 (defun add-solution (state estimate path)
-  ;; (cl-heap:add-to-heap *current-solutions* (list estimate state path))
-  ;; (when (> (cl-heap:heap-size *current-solutions*) *solutions-limit*)
-  ;;   (cl-heap:pop-heap *current-solutions*))
-  (when (> estimate (first *current-solutions*))
-    (setf *current-solutions* (list estimate state path))))
+  (cl-heap:add-to-heap *current-solutions* (list estimate state path))
+  (when (> (cl-heap:heap-size *current-solutions*) *solutions-limit*)
+    (cl-heap:pop-heap *current-solutions*))
+  ;; (when (> estimate (first *current-solutions*))
+  ;;   (setf *current-solutions* (list estimate state path)))
+  )
 
 (defun found-solutions ()
-  ;; (let ((lst nil))
-  ;;   (loop while (not (cl-heap:is-empty-heap-p *current-solutions*))
-  ;;        do (push (cl-heap:pop-heap *current-solutions*)
-  ;;                 lst))
-  ;;   lst)
-  (list *current-solutions*))
+  (let ((lst nil))
+    (loop while (not (cl-heap:is-empty-heap-p *current-solutions*))
+         do (push (cl-heap:pop-heap *current-solutions*)
+                  lst))
+    lst)
+  ;; (list *current-solutions*)
+  )
 
 (defun one-unit-wave (state base-path)
   (let ((visited (make-hash-table :test #'equal))
         (front (list (list state base-path)))
+        (*solutions-by-pos* (make-hash-table :test #'equalp))
         ;; (best-state state)
         ;; (best-state-est -99999999)
         ;; (best-path nil)
@@ -178,7 +199,7 @@
                                ;;   (setf best-state state)
                                ;;   (setf best-path path)
                                ;;   (setf best-state-est est))
-                               (add-solution state est path)
+                               (add-solution-by-pos pivot-before-move state est path)
                                nil)
                              (list (list state path))))))))
              (%one-cell (state path)
@@ -200,6 +221,7 @@
                  (%run-wave))))
       ;;(setf best-state-est (%estimate state (gs-pivot state)))
       (%run-wave)
+      (flush-solutions)
       ;;(values best-state (reverse best-path))
       )))
 
@@ -211,11 +233,11 @@
     (loop while states-to-try
        do (let ((new-states nil)
                 (*current-solutions* (make-solutions-box))
-                (*solutions-limit* 1))
-            (format t "Trying ~A variants~%" (length states-to-try))
+                (*solutions-limit* 5))
+            ;; (format t "Trying ~A variants~%" (length states-to-try))
             (loop for (est state path) in states-to-try
                do
-                 (format t "Est = ~A, Path = ~A~%" est path)
+                 ;; (format t "Est = ~A, Path = ~A~%" est path)
                  (one-unit-wave state path))
             (loop for (new-est new-state new-path) in (found-solutions)
                do (if (gs-terminal? new-state)
