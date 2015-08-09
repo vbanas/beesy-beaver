@@ -69,8 +69,13 @@ function draw_honeycomb (columns, rows, points, pivot, score, units_left) {
             }
         });
 
-    var hexbin_element = hexbins[pivot.ROW * columns + pivot.COL];
+    //var hexbin_element = hexbins[pivot.ROW * columns + pivot.COL];
+    //hexRadius * j * 1.75, hexRadius * i * 1.5
+    var hexbin_element = { x : pivot.COL * 1.75 * hexbin.radius (),
+                           y : pivot.ROW * 1.5 * hexbin.radius () };
 
+    if (pivot.ROW % 2 != 0) { hexbin_element.x = hexbin_element.x + hexRadius; }
+    
     svg.append ("circle")
         .attr("cx", hexbin_element.x)
         .attr("cy", hexbin_element.y)
