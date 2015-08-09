@@ -14,6 +14,13 @@
   matchers
   magic-words)
 
+(defun compute-magic-words-bonus (game-state)
+  (format t ">> magic words: ~A~%" (gs-magic-words game-state))
+  (reduce (lambda (accum word/count)
+            (+ accum 300 (* 2 (length (car word/count)) (cdr word/count))))
+          (gs-magic-words game-state)
+          :initial-value 0))
+
 (defun update-cells (field func cells new-pos-l)
   (if (null cells)
       (nreverse new-pos-l)
@@ -193,11 +200,11 @@
     (if word
         (values
          nil
-         (if (assoc word old-magic-words)
-             (let ((new-magic-words (copy-list old-magic-words)))
-               (incf (cdr (assoc word new-magic-words)))
-               new-magic-words)
-             (acons word 1 old-magic-words)))
+         (let ((word-record (assoc word old-magic-words :test #'string=)))
+           (if word-record
+               (acons word (1+ (cdr word-record))
+                      (remove word old-magic-words :test #'string= :key #'car))
+               (acons word 1 old-magic-words))))
         (values
          new-matchers
          old-magic-words))))
