@@ -15,7 +15,6 @@
   magic-words)
 
 (defun compute-magic-words-bonus (game-state)
-  (format t ">> magic words: ~A~%" (gs-magic-words game-state))
   (reduce (lambda (accum word/count)
             (+ accum 300 (* 2 (length (car word/count)) (cdr word/count))))
           (gs-magic-words game-state)
