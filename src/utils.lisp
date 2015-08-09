@@ -25,3 +25,12 @@
   (let ((test (car (decode-units (yason:parse "[{\"members\":[{\"x\":0,\"y\":1},{\"x\":1,\"y\":1}],\"pivot\":{\"x\":1,\"y\":0}}]"))))
 	(*width* 5))
     (unit-start-position (unit-pivot test) (unit-members test))))
+
+
+(defun combine-solutions (input-filenames output-filename)
+  (with-open-file (output output-filename :direction :output)
+    (yason:encode
+     (mapcan (lambda (file)
+               (yason:parse (alexandria:read-file-into-string file)))
+             input-filenames)
+     output)))
