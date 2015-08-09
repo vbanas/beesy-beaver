@@ -195,9 +195,6 @@
         (front (list (list state base-path)))
         (magic-words-front nil)
         (*solutions-by-pos* (make-hash-table :test #'equalp))
-        ;; (best-state state)
-        ;; (best-state-est -99999999)
-        ;; (best-path nil)
         (base-ests (raw-field-estimates (gs-field state) (gs-cleared-prev state))))
     (labels ((%estimate (lock-delta state old-pivot)
                (declare (ignore old-pivot))
@@ -205,10 +202,8 @@
                 (compute-estimate (update-estimate
                                    base-ests lock-delta
                                    (gs-field state) (gs-cleared-prev state)))
-                ;; (if (gs-cleared-prev state)
-                ;;     5000
-                ;;     0)
-                (gs-score state)
+                (+ (gs-score state)
+                   (compute-magic-words-bonus state))
                 ))
              (%add-and-visit (state-data)
                (destructuring-bind (state path was-locked pivot-before-move) state-data
@@ -226,12 +221,6 @@
                                  t))
                          (if finished
                              (let ((est (%estimate *lock-delta* state pivot-before-move)))
-                               ;; (format t "Found finished ~A (~A > ~A)~%" path est best-state-est)
-                               ;; (when (> est
-                               ;;          best-state-est)
-                               ;;   (setf best-state state)
-                               ;;   (setf best-path path)
-                               ;;   (setf best-state-est est))
                                (add-solution-by-pos pivot-before-move state est path)
                                nil)
                              (list (list state path))))))))
@@ -272,10 +261,11 @@
         (best-state state)
         (states-to-try (list (list 0 state nil))))
     (loop while states-to-try
+         for unit-num from 0
        do (let ((new-states nil)
                 (*current-solutions* (make-solutions-box))
                 (*solutions-limit* 3))
-            ;; (format t "Trying ~A variants~%" (length states-to-try))
+            (format *error-output* "Processing unit #~A~%" unit-num)
             (loop for (est state path) in states-to-try
                do
                ;; (format t "Est = ~A, Path = ~A~%" est path)
@@ -304,16 +294,20 @@
     (let ((res (make-instance 'play-result
                               :seed (nth seed-id (task-source-seeds task))
                               :problemId (task-id task)
-                              :tag (format nil "~A_SCORE_~A" (task-id task) (gs-score state))
+                              :tag (format nil "~A_SCORE_~A" (task-id task) (+ (compute-magic-words-bonus state)
+                                                                               (gs-score state)))
                               :solution (simple-encode-solution path))))
       res)))
 
 (defun simple-wave-from-task (task)
   (loop for seed-id below (length (task-source-seeds task))
-     collect (simple-wave-from-task-one-seed task seed-id)))
+     collect
+       (progn (format *error-output* "Seed #~A~%" seed-id)
+              (simple-wave-from-task-one-seed task seed-id))))
 
 (defun simple-wave-from-task-json (task-file seed-id &optional tag)
-  (let ((task (decode-task (alexandria:read-file-into-string task-file))))
+  (let ((*magic-words-cst* (make-command-seq-matching-tree nil))
+        (task (decode-task (alexandria:read-file-into-string task-file))))
     (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
       (let ((res (make-instance 'play-result
                                 :tag tag
