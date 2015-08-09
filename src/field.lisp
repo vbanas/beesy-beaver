@@ -41,6 +41,9 @@
         default
         (get-cell field pos))))
 
+(defun row-filled (field row)
+  (car (fset:@ field row)))
+
 (defvar *filled-rows* nil)
 
 (defun put-cell (field pos val)
