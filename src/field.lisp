@@ -6,8 +6,8 @@
 ;; Pos
 
 (defstruct (pos (:constructor mk-pos))
-  row
-  col)
+  (row nil :type fixnum)
+  (col nil :type fixnum))
 
 (defun make-pos (row col)
   (mk-pos :row row :col col))
@@ -55,9 +55,9 @@
     (generate-row)))
 
 (defstruct cube-pos
-  x
-  y
-  z)
+  (x nil :type fixnum)
+  (y nil :type fixnum)
+  (z nil :type fixnum))
 
 (defun cube-pos-add (pos1 pos2)
   (make-cube-pos

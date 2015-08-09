@@ -2,12 +2,9 @@
 
 (defun wave-state-id (state)
   (with-slots (pivot unit-cells unit-generator) state
-    (let* ((cpivot (pos-to-cube pivot))
-           (crot (mapcar (lambda (cell)
-                           (let ((cpos (cube-pos-sub (pos-to-cube cell) cpivot)))
-                             (list (cube-pos-x cpos)
-                                   (cube-pos-y cpos)
-                                   (cube-pos-z cpos))))
+    (let* ((crot (mapcar (lambda (cell)
+                           (list (pos-row cell)
+                                 (pos-col cell)))
                          unit-cells)))
       (list (pos-row pivot) (pos-col pivot)
             crot
@@ -17,7 +14,7 @@
 (defparameter *horiz-coef* 4)
 (defparameter *hole-coef* 5)
 
-(defun estimate-field (field lines-removed)
+(defun raw-field-estimates (field lines-removed)
   (let ((vert-compactness 0)
         (min-row (1- *height*))
         (horiz-nums (make-array *width* :initial-element 0))
@@ -50,6 +47,11 @@
     ;; TODO: Squares here
     (loop for val across horiz-nums
        do (incf horiz-planarity (abs (- val avg-height))))
+    (list min-row lines-removed vert-compactness avg-height horiz-nums filled num-holes horiz-planarity)))
+
+(defun compute-estimate (raw-ests)
+  (destructuring-bind (min-row lines-removed vert-compactness avg-height horiz-nums filled num-holes horiz-planarity)
+      raw-ests
     (let* ((vc-est (if (zerop filled)
                        1
                        (/ vert-compactness filled)))
@@ -69,16 +71,46 @@
       ;; TODO: Coefs here
       total-est)))
 
+(defun estimate-field (field lines-removed)
+  (compute-estimate (raw-field-estimates field lines-removed)))
+
+(defun update-estimate (raw-est lock-delta field lines-removed)
+  (destructuring-bind (min-row lines-removed-1 vert-compactness avg-height horiz-nums filled num-holes horiz-planarity)
+      raw-est
+    (destructuring-bind (filled-rows cells) lock-delta
+      (setf lines-removed-1 (* lines-removed-1 lines-removed))
+      (loop for cell in cells do
+           (when (< (pos-row cell)
+                    min-row)
+             (setf min-row (pos-row cell)))
+           (incf filled)
+           (incf vert-compactness (pos-row cell))
+           (let ((sw (validate-pos (move cell :south-west)))
+                 (se (validate-pos (move cell :south-west))))
+             (when (or (and (not (eq sw :invalid))
+                            (zerop (get-cell field sw)))
+                       (and (not (eq se :invalid))
+                            (zerop (get-cell field se))))
+               (incf num-holes)))
+           (if (>= (aref horiz-nums (pos-col cell))
+                   avg-height)
+               (decf horiz-planarity)
+               (incf horiz-planarity)))
+      (list min-row lines-removed-1 vert-compactness avg-height horiz-nums filled num-holes horiz-planarity))))
+
 (defun one-unit-wave (state)
   (let ((visited (make-hash-table :test #'equal))
         (front (list (list state nil 0 nil)))
         (best-state state)
         (best-state-est -99999999)
-        (best-path nil))
-    (labels ((%estimate (state old-pivot)
+        (best-path nil)
+        (base-ests (raw-field-estimates (gs-field state) (gs-cleared-prev state))))
+    (labels ((%estimate (lock-delta state old-pivot)
                (declare (ignore old-pivot))
                (* ;;(1+ (pos-row old-pivot)) 
-                (estimate-field (gs-field state) (gs-cleared-prev state))
+                (compute-estimate (update-estimate
+                                   base-ests lock-delta
+                                   (gs-field state) (gs-cleared-prev state)))
                 ;; (if (gs-cleared-prev state)
                 ;;     5000
                 ;;     0)
@@ -89,7 +121,7 @@
                  ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
                  (let* ((finished (or (>= locked-cnt 1)
                                       (gs-terminal? state)))
-                        (id (cons locked-list (wave-state-id state))))
+                        (id (wave-state-id state)))
                    (if (and (not finished)
                             (gethash id visited))
                        nil
@@ -98,7 +130,7 @@
                            (setf (gethash id visited)
                                  t))
                          (if finished
-                             (let ((est (%estimate state pivot-before-move)))
+                             (let ((est (%estimate *lock-delta* state pivot-before-move)))
                                ;; (format t "Found finished ~A (~A > ~A)~%" path est best-state-est)
                                (when (> est
                                         best-state-est)
@@ -139,6 +171,7 @@
 (defun wave-one-by-one (state)
   (let ((path nil))
     (loop while (not (gs-terminal? state))
+         for num-unit from 0
        do
        ;; (format t "New wave~%")
          (multiple-value-bind (new-state new-path) (one-unit-wave state)
@@ -148,6 +181,7 @@
                  (format t "Ooops in wave, no moves found~%")
                  (setf state (terminate-state new-state)))
                (progn
+                 ;; (format t "Chose path ~A, unit ~A~%" new-path num-unit)
                  (setf state new-state)
                  (setf path (append (reverse new-path) path))))))
     (values state (reverse path))))
