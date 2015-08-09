@@ -10,7 +10,7 @@
 
 (defun main ()
   (when sb-ext:*posix-argv*
-    (let* ((parsed-args (apply-argv:parse-argv* ;;'("./test" "-f" "problems/problem_24.json")))
+    (let* ((parsed-args (apply-argv:parse-argv* ;;'("./test" "-f" "problems/problem_1.json")))
 			 sb-ext:*posix-argv*))
 	   (files) (phrases) (time) (memory) (proc-count))
       ;;(format t "~A~%~A~%" parsed-args (alexandria:plist-alist (cdr parsed-args)))
@@ -24,6 +24,7 @@
 		    ((string= "-m" o) (setq memory v))
 		    ((string= "-t" o) (setq time v)))))
 	      (alexandria:plist-alist (cdr parsed-args)))
+      (setq *magic-words* phrases)
       ;;(format t "~A~%" files)
       (let ((result-list nil))
 	(dolist (f (reverse files))			

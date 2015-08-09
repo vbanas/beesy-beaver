@@ -1,5 +1,7 @@
 (in-package :beesy-beaver)
 
+(defparameter *magic-words* nil)
+
 ;; { "id": number              /* A unique number identifying the problem */
 
 ;; , "units": [ Unit ]
