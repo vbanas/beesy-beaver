@@ -11,5 +11,7 @@ tests: all
 
 all-solutions: $(patsubst %,%.solution,$(basename $(wildcard problems/*.json)))
 
+HEAP_SIZE?=1000
+
 problems/%.solution : problems/%.json
-	time ./play_icfp2015 -f $< -p "ei!" -p "yuggoth" -p "ia! ia!" -p "r'lyeh" > $@
+	time ./play_icfp2015 --dynamic-space-size $(HEAP_SIZE) -f $< -p "ei!" -p "yuggoth" -p "ia! ia!" -p "r'lyeh" > $@
