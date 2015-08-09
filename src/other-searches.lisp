@@ -4,6 +4,7 @@
 
 (defparameter *magic-words-cst* nil)
 
+
 (defun wave-state-id (state)
   (with-slots (pivot unit-cells unit-generator) state
     (let* ((crot (mapcar (lambda (cell)
@@ -14,17 +15,15 @@
             crot
             (unit-generator-units-left unit-generator)))))
 
-(defparameter *vert-coef* 40)
-(defparameter *horiz-coef* 80)
-(defparameter *hole-coef* 50)
+(defparameter *vert-coef* 20)
+(defparameter *horiz-coef* 10)
+(defparameter *hole-coef* 10)
 (defparameter *lines-coef* 5)
 (defparameter *min-row-coef* 1)
-(defparameter *max-row-coef* 1)
 
 (defun raw-field-estimates (field lines-removed)
   (let ((vert-compactness 0)
         (min-row (1- *height*))
-        (max-row 0)
         (horiz-nums (make-array *width* :initial-element 0))
         (num-holes 0)
         (sum-heights 0)
@@ -53,8 +52,6 @@
                    (incf filled)
                    (when (< row min-row)
                      (setf min-row row))
-                   (when (> row max-row)
-                     (setf max-row row))
                    (incf (aref horiz-nums col))))))
     (loop for val across horiz-nums
        do (incf sum-heights val))
@@ -62,24 +59,15 @@
     ;; TODO: Squares here
     (loop for val across horiz-nums
        do (incf horiz-planarity (abs (- val avg-height))))
-    (list min-row max-row almost-filled-rows almost-filled-rows lines-removed lines-removed vert-compactness avg-height horiz-nums filled num-holes num-holes horiz-planarity)))
+    (list min-row almost-filled-rows almost-filled-rows lines-removed lines-removed vert-compactness avg-height horiz-nums filled num-holes num-holes horiz-planarity)))
 
-(defun compute-estimate (units-left raw-ests)
-  (destructuring-bind (min-row max-row almost-filled-rows old-almost-filled-rows lines-removed old-lines-removed
+(defun compute-estimate (raw-ests)
+  (destructuring-bind (min-row almost-filled-rows old-almost-filled-rows lines-removed old-lines-removed
                                vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
       raw-ests
-    (when (and (< avg-height (truncate *height* 4))
-               (> units-left 20)
-               (> lines-removed 0)
-               (< lines-removed 2))
-      (setf old-lines-removed 0)
-      (setf lines-removed -1000))
     (let* ((vc-est (if (zerop filled)
                        1
-                       (/ vert-compactness filled))
-            ;; (/ (- *height* (1+ (- max-row min-row)))
-            ;;    *height*)
-             )
+                       (/ vert-compactness filled)))
            (hp-est (/ (- (* *width* *height*) horiz-planarity)
                       (* *width* *height*)))
            (nh-est (expt 2.0 (- old-num-holes num-holes)))
@@ -87,13 +75,11 @@
                       ;; (+ (- almost-filled-rows old-almost-filled-rows) 1)
                       lines-removed))
            (min-row-est (/ min-row (1- *height*)))
-           (max-row-est (/ (- *height* (- max-row min-row)) (1- *height*)))
            (total-est (+ (* *vert-coef* vc-est)
                          (* *horiz-coef* hp-est)
                          (* *hole-coef* nh-est)
                          (* *lines-coef* ln-est)
-                         (* *min-row-coef* min-row-est)
-                         (* *max-row-coef* max-row-est))))
+                         (* *min-row-coef* min-row-est))))
       ;; (format t "~A~%" field)
       ;; (format t "Estimated: vert comp: ~A, horiz-planarity: ~A, num-holes: ~A~%"
       ;;         vc-est hp-est nh-est)
@@ -103,11 +89,11 @@
       ;; TODO: Coefs here
       total-est)))
 
-(defun estimate-field (units-left field lines-removed)
-  (compute-estimate units-left (raw-field-estimates field lines-removed)))
+(defun estimate-field (field lines-removed)
+  (compute-estimate (raw-field-estimates field lines-removed)))
 
 (defun update-estimate (raw-est lock-delta field lines-removed)
-  (destructuring-bind (min-row max-row almost-filled-rows old-almost-filled-rows lines-removed-1 old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
+  (destructuring-bind (min-row almost-filled-rows old-almost-filled-rows lines-removed-1 old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
       raw-est
     (destructuring-bind (filled-rows cells) lock-delta
       (let ((cur-filled filled-rows)
@@ -131,9 +117,6 @@
                  (when (< (pos-row cell)
                           min-row)
                    (setf min-row (pos-row cell)))
-                 (when (> (pos-row cell)
-                          max-row)
-                   (setf max-row (pos-row cell)))
                  (incf filled)
                  (incf vert-compactness (pos-row cell))
                  (let ((sw (validate-pos (move cell :south-west)))
@@ -161,7 +144,7 @@
       ;;     ;;           num-holes)
       ;;     ;;   (read-line))
       ;;     ))
-      (list min-row max-row almost-filled-rows old-almost-filled-rows lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity))))
+      (list min-row almost-filled-rows old-almost-filled-rows lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity))))
 
 (defvar *current-solutions*)
 (defvar *solutions-limit*)
@@ -216,9 +199,7 @@
     (labels ((%estimate (lock-delta state old-pivot)
                (declare (ignore old-pivot))
                (* ;;(1+ (pos-row old-pivot))
-                (compute-estimate
-                 (unit-generator-units-left (gs-unit-generator state))
-                 (update-estimate
+                (compute-estimate (update-estimate
                                    base-ests lock-delta
                                    (gs-field state) (gs-cleared-prev state)))
                 (+ (gs-score state)
@@ -336,9 +317,7 @@
         (values (with-output-to-string (str)
                   (yason:encode (list res) str))
                 state
-                (estimate-field
-                 (unit-generator-units-left (gs-unit-generator state))
-                 (gs-field state) (gs-cleared-prev state))
+                (estimate-field (gs-field state) (gs-cleared-prev state))
                 path)))))
 
 (defun try-coefs (task-file seed-id)
