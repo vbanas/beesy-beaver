@@ -15,10 +15,10 @@
             crot
             (unit-generator-units-left unit-generator)))))
 
-(defparameter *vert-coef* 20)
+(defparameter *vert-coef* 40)
 (defparameter *horiz-coef* 10)
 (defparameter *hole-coef* 10)
-(defparameter *lines-coef* 5)
+(defparameter *lines-coef* 15)
 (defparameter *min-row-coef* 1)
 
 (defun raw-field-estimates (field lines-removed)
@@ -191,7 +191,7 @@
   ;; front is list of wave-states
   ;; wave-state is list of state path locked-cnt locked-list matching-words
   ;; matching-words is list of states to match magic words (see magic-words.lisp)
-  (let ((visited (make-hash-table :test #'equal))
+  (let ((visited (make-hash-table :test #'equalp))
         (front (list (list state base-path)))
         (magic-words-front nil)
         (*solutions-by-pos* (make-hash-table :test #'equalp))
@@ -211,7 +211,7 @@
                  ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
                  (let* ((finished (or was-locked
                                       (gs-terminal? state)))
-                        (id (wave-state-id state)))
+                        (id (cons (gs-matchers state) (wave-state-id state))))
                    (if (and (not finished)
                             (gethash id visited))
                        nil
