@@ -1,6 +1,5 @@
-
-
 var sleep_time = 100;
+var isPause = false;
 
 
 //util functions
@@ -43,6 +42,35 @@ function decode_command (command) {
         return "";
 }
 
+function simulate (commands) {
+    var command_index = 0;
+
+    var send_command_on_timer = function () {
+        if (isPause) {
+            setTimeout (send_command_on_timer, sleep_time);
+            return;
+        }
+
+        if (command_index < commands.length) {
+            console.log ("sending command index = " + command_index + "; command = " + decode_command (commands [command_index]));
+
+            send_command( decode_command (commands [command_index]),
+                          function (data) {
+                              update_data (data);
+
+                              command_index++;
+                              if (data.IS_TERMINATED == 0) {
+                                  setTimeout (send_command_on_timer, sleep_time);
+                              }
+                              else {
+                                  console.log ("terminated");
+                              }
+                          });
+        }
+    };
+    send_command_on_timer ();
+}
+
 
 //events
 d3.select("#get-current-map")
@@ -53,33 +81,24 @@ d3.select("#get-current-map")
 
 d3.select("#send-command")
     .on("click", function() {
-        var commands = d3.select("#command-value").property("value");
-
-        var command_index = 0;
-        
-        var send_command_on_timer = function () {
-            if (command_index < commands.length) {
-                console.log ("sending command index = " + command_index + "; command = " + decode_command (commands [command_index]));
-                
-                send_command( decode_command (commands [command_index]),
-                              function (data) {
-                                  update_data (data);
-
-                                  command_index++;
-                                  if (data.IS_TERMINATED == 0)
-                                      setTimeout (send_command_on_timer, sleep_time);
-                                  else
-                                      console.log ("terminated");
-                              });
-            }
-        };
-        send_command_on_timer ();
+        simulate (d3.select("#command-value").property("value"));
     });
 
+var keyboardOn = false;
 
 d3.select("body").on("keydown", function () {
     var code = d3.event.keyCode;
     var command;
+
+    //<C-M-k>
+    if (code == 75 && d3.event.altKey && d3.event.ctrlKey) {
+        keyboardOn = !keyboardOn;
+        console.log ("keyboardOn = " + keyboardOn);
+    }
+
+    if (!keyboardOn) return;
+
+
     // a
     if (code == 65) {
         command = "west";
@@ -107,4 +126,26 @@ d3.select("body").on("keydown", function () {
 
     if (command !== undefined)
         send_command (command, update_data);
+});
+
+
+d3.select ("#simulate-level").on ("click", function () {
+    var filename = d3.select ("#level-file-value").property ("value");
+    var seed = d3.select ("#seed-index-value").property ("value");
+    var url = "/simulate?file=" + encodeURIComponent (filename) +
+        "&seed=" + encodeURIComponent (seed);
+    $.get (url, function (data) { simulate (data.solution); });
+});
+
+d3.select ("#toggle-simulation").on ("click", function () {
+    // there is should be another way to refer selected element
+    var this_element = d3.select ("#toggle-simulation");
+    if (isPause) {
+        this_element.text ("Pause");
+    }
+    else {
+        this_element.text ("Play");
+    }
+    isPause = !isPause;
+    console.log ("pause = " + isPause);
 });

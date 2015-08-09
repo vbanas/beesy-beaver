@@ -118,6 +118,20 @@
         (otherwise (return-from move :invalid)))
       (make-pos new-row new-col))))
 
+(defun move-up (pos dir)
+  (with-slots (row col) pos
+    (let ((new-row row)
+          (new-col col))
+      (case dir
+        (:north-west (decf new-row)
+                     (when (evenp row)
+                       (decf new-col)))
+        (:north-east (decf new-row)
+                     (when (oddp row)
+                       (incf new-col)))
+        (otherwise (return-from move-up :invalid)))
+      (make-pos new-row new-col))))
+
 (defun rotate (pivot cell clockwise)
   (let* ((cpivot (pos-to-cube pivot))
          (ccell (pos-to-cube cell))

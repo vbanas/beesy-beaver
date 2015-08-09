@@ -186,18 +186,8 @@
                  (setf path (append (reverse new-path) path))))))
     (values state (reverse path))))
 
-(defun simple-encode-command (command)
-  (case command
-    (:west (elt "p'!.03" 0))
-    (:east (elt "bcefy2" 0))
-    (:south-west (elt "aghij4" 0))
-    (:south-east (elt "lmno 5" 0))
-    (:clockwise (elt "dqrvz1" 0))
-    (:counter-clockwise (elt "kstuwx" 0))))
-
 (defun simple-encode-solution (path)
-  (coerce (mapcar #'simple-encode-command path)
-          'string))
+  (encode-commands-with-magic-words *magic-words* path))
 
 (defun simple-wave-from-task-one-seed (task seed-id)
   (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
