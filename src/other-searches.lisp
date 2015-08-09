@@ -283,7 +283,7 @@
     (loop while states-to-try
        do (let ((new-states nil)
                 (*current-solutions* (make-solutions-box))
-                (*solutions-limit* 2))
+                (*solutions-limit* 3))
             ;; (format t "Trying ~A variants~%" (length states-to-try))
             (loop for (est state path) in states-to-try
                do
