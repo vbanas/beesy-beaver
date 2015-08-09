@@ -187,19 +187,12 @@
   ;; (list *current-solutions*)
   )
 
-
-(defun move-matching-words (command matching-words)
-  (remove nil
-          (mapcar (lambda (mw) (cst-next-state *magic-words-cst* mw command))
-                  (cons +cst-initial+ matching-words))))
-
-
 (defun one-unit-wave (state base-path)
   ;; front is list of wave-states
   ;; wave-state is list of state path locked-cnt locked-list matching-words
   ;; matching-words is list of states to match magic words (see magic-words.lisp)
   (let ((visited (make-hash-table :test #'equal))
-        (front (list (list state base-path nil)))
+        (front (list (list state base-path)))
         (magic-words-front nil)
         (*solutions-by-pos* (make-hash-table :test #'equalp))
         ;; (best-state state)
@@ -218,7 +211,7 @@
                 (gs-score state)
                 ))
              (%add-and-visit (state-data)
-               (destructuring-bind (state path was-locked pivot-before-move matching-words) state-data
+               (destructuring-bind (state path was-locked pivot-before-move) state-data
                  ;; (format t "Considering ~A (est A) (key ~A) (visited ~A)~%" (reverse path) #|(%estimate state pivot-before-move)|#
                  ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
                  (let* ((finished (or was-locked
@@ -241,16 +234,15 @@
                                ;;   (setf best-state-est est))
                                (add-solution-by-pos pivot-before-move state est path)
                                nil)
-                             (list (list state path matching-words))))))))
-             (%one-cell (state path matching-words)
+                             (list (list state path))))))))
+             (%one-cell (state path)
                (let* ((moves (allowed-commands state))
                       (new-states (mapcar (lambda (m)
                                             (let ((*was-locked* nil))
                                               (list (next-state state m)
                                                     (cons m path)
                                                     *was-locked*
-                                                    (gs-pivot state)
-                                                    (move-matching-words m matching-words))))
+                                                    (gs-pivot state))))
                                           moves)))
                  (mapcan #'%add-and-visit new-states)))
              (%run-wave ()
@@ -259,12 +251,11 @@
                      (setf magic-words-front nil)
                      (setf front nil))
                  (dolist (front-state front-to-process)
-                   (destructuring-bind (state path matching-words) front-state
-                     (let ((new-front-states (%one-cell state path matching-words)))
-
+                   (destructuring-bind (state path) front-state
+                     (let ((new-front-states (%one-cell state path)))
                        (dolist (new-front-state new-front-states)
                          ;; check matching-words
-                         (if (third new-front-state)
+                         (if (gs-matchers (first new-front-state))
                              (push new-front-state magic-words-front)
                              (push new-front-state front)))))))
                (when (or front magic-words-front)

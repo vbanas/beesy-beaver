@@ -10,7 +10,9 @@
   terminal?
   last-horiz-move
   last-rotations
-  max-rotations)
+  max-rotations
+  matchers
+  (words-score 0))
 
 (defun update-cells (field func cells new-pos-l)
   (if (null cells)
@@ -177,49 +179,64 @@
 
 (defvar *was-locked* nil)
 
+(defun move-matching-words (command matching-words)
+  (remove nil
+          (mapcar (lambda (mw) (cst-next-state *magic-words-cst* mw command))
+                  (cons +cst-initial+ matching-words))))
+
 (defun next-state (cur-state command)
-  (with-slots (field score pivot unit-cells unit-generator cleared-prev last-rotations last-horiz-move max-rotations)
+  (with-slots (field score pivot unit-cells unit-generator cleared-prev last-rotations last-horiz-move max-rotations
+                     matchers words-score)
       cur-state
     (multiple-value-bind (new-pivot new-cells)
         (update-command-cells field pivot unit-cells command)
-      (let ((new-state
-             (if (eq new-pivot :locked)
-                 (multiple-value-bind (new-field removed-rows)
-                     (lock-cells field unit-cells)
-                   (setf *was-locked* t)
-                   (multiple-value-bind (pivot units new-max-rot new-gen) (generate-new-unit unit-generator)
-                     (if (and pivot
-                              (check-cells new-field units))
-                         (make-game-state :field new-field
-                                          :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                          :pivot pivot
-                                          :unit-cells units
-                                          :unit-generator new-gen
-                                          :cleared-prev removed-rows
-                                          :terminal? nil
-                                          :last-horiz-move nil
-                                          :last-rotations 0
-                                          :max-rotations new-max-rot)
-                         (make-game-state :field new-field
-                                          :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
-                                          :pivot (make-pos 0 0)
-                                          :unit-cells (list (make-pos 0 0))
-                                          :unit-generator unit-generator
-                                          :cleared-prev removed-rows
-                                          :last-horiz-move nil
-                                          :last-rotations 0
-                                          :max-rotations 0
-                                          :terminal? t))))
-                 (make-game-state :field field
-                                  :score score
-                                  :pivot new-pivot
-                                  :unit-cells new-cells
-                                  :unit-generator unit-generator
-                                  :cleared-prev cleared-prev
-                                  :last-horiz-move (updated-last-horiz-move command last-horiz-move)
-                                  :last-rotations (updated-last-rotations command last-rotations)
-                                  :max-rotations max-rotations
-                                  :terminal? nil))))
+      (let* ((new-matching-words (move-matching-words command matchers))
+             (new-words-score words-score ;; TODO: compute
+               )
+             (new-state
+              (if (eq new-pivot :locked)
+                  (multiple-value-bind (new-field removed-rows)
+                      (lock-cells field unit-cells)
+                    (setf *was-locked* t)
+                    (multiple-value-bind (pivot units new-max-rot new-gen) (generate-new-unit unit-generator)
+                      (if (and pivot
+                               (check-cells new-field units))
+                          (make-game-state :field new-field
+                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                           :pivot pivot
+                                           :unit-cells units
+                                           :unit-generator new-gen
+                                           :cleared-prev removed-rows
+                                           :terminal? nil
+                                           :last-horiz-move nil
+                                           :last-rotations 0
+                                           :max-rotations new-max-rot
+                                           :matchers new-matching-words
+                                           :words-score new-words-score)
+                          (make-game-state :field new-field
+                                           :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
+                                           :pivot (make-pos 0 0)
+                                           :unit-cells (list (make-pos 0 0))
+                                           :unit-generator unit-generator
+                                           :cleared-prev removed-rows
+                                           :last-horiz-move nil
+                                           :last-rotations 0
+                                           :max-rotations 0
+                                           :terminal? t
+                                           :matchers new-matching-words
+                                           :words-score new-words-score))))
+                  (make-game-state :field field
+                                   :score score
+                                   :pivot new-pivot
+                                   :unit-cells new-cells
+                                   :unit-generator unit-generator
+                                   :cleared-prev cleared-prev
+                                   :last-horiz-move (updated-last-horiz-move command last-horiz-move)
+                                   :last-rotations (updated-last-rotations command last-rotations)
+                                   :max-rotations max-rotations
+                                   :terminal? nil
+                                   :matchers new-matching-words
+                                   :words-score new-words-score))))
         (values new-state (gs-terminal? new-state))))))
 
 (defun initial-state (task seed-index)
