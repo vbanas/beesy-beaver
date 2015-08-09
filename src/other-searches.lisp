@@ -7,22 +7,21 @@
 
 (defun wave-state-id (state)
   (with-slots (pivot unit-cells unit-generator) state
-    (let* ((cpivot (pos-to-cube pivot))
-           (crot (mapcar (lambda (cell)
-                           (let ((cpos (cube-pos-sub (pos-to-cube cell) cpivot)))
-                             (list (cube-pos-x cpos)
-                                   (cube-pos-y cpos)
-                                   (cube-pos-z cpos))))
+    (let* ((crot (mapcar (lambda (cell)
+                           (list (pos-row cell)
+                                 (pos-col cell)))
                          unit-cells)))
       (list (pos-row pivot) (pos-col pivot)
             crot
             (unit-generator-units-left unit-generator)))))
 
-(defparameter *vert-coef* 70)
-(defparameter *horiz-coef* 4)
-(defparameter *hole-coef* 5)
+(defparameter *vert-coef* 20)
+(defparameter *horiz-coef* 10)
+(defparameter *hole-coef* 10)
+(defparameter *lines-coef* 5)
+(defparameter *min-row-coef* 1)
 
-(defun estimate-field (field lines-removed)
+(defun raw-field-estimates (field lines-removed)
   (let ((vert-compactness 0)
         (min-row (1- *height*))
         (horiz-nums (make-array *width* :initial-element 0))
@@ -55,16 +54,25 @@
     ;; TODO: Squares here
     (loop for val across horiz-nums
        do (incf horiz-planarity (abs (- val avg-height))))
+    (list min-row lines-removed lines-removed vert-compactness avg-height horiz-nums filled num-holes num-holes horiz-planarity)))
+
+(defun compute-estimate (raw-ests)
+  (destructuring-bind (min-row lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
+      raw-ests
     (let* ((vc-est (if (zerop filled)
                        1
                        (/ vert-compactness filled)))
-           (hp-est (- (* *width* *height*) horiz-planarity))
-           (nh-est (- (* *width* *height*) num-holes))
-           (total-est (* (+ (* *vert-coef* vc-est)
-                            (* *horiz-coef* hp-est)
-                            (* *hole-coef* nh-est))
-                         (+ lines-removed 1)
-                         min-row)))
+           (hp-est (/ (- (* *width* *height*) horiz-planarity)
+                      (* *width* *height*)))
+           (nh-est (expt 2.0 (- old-num-holes num-holes)))
+           (ln-est (* (+ old-lines-removed 1)
+                      lines-removed))
+           (min-row-est (/ min-row (1- *height*)))
+           (total-est (+ (* *vert-coef* vc-est)
+                         (* *horiz-coef* hp-est)
+                         (* *hole-coef* nh-est)
+                         (* *lines-coef* ln-est)
+                         (* *min-row-coef* min-row-est))))
       ;; (format t "~A~%" field)
       ;; (format t "Estimated: vert comp: ~A, horiz-planarity: ~A, num-holes: ~A~%"
       ;;         vc-est hp-est nh-est)
@@ -74,6 +82,87 @@
       ;; TODO: Coefs here
       total-est)))
 
+(defun estimate-field (field lines-removed)
+  (compute-estimate (raw-field-estimates field lines-removed)))
+
+(defun update-estimate (raw-est lock-delta field lines-removed)
+  (destructuring-bind (min-row lines-removed-1 old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity)
+      raw-est
+    (destructuring-bind (filled-rows cells) lock-delta
+      (loop for cell in cells do
+           (when (< (pos-row cell)
+                    min-row)
+             (setf min-row (pos-row cell)))
+           (incf filled)
+           (incf vert-compactness (pos-row cell))
+           (let ((sw (validate-pos (move cell :south-west)))
+                 (se (validate-pos (move cell :south-west))))
+             (when (or (and (not (eq sw :invalid))
+                            (zerop (get-cell field sw)))
+                       (and (not (eq se :invalid))
+                            (zerop (get-cell field se))))
+               (incf num-holes)))
+           (if (>= (aref horiz-nums (pos-col cell))
+                   avg-height)
+               (decf horiz-planarity)
+               (incf horiz-planarity)))
+      ;; (when (/= num-holes old-num-holes)
+      ;;   (let ((graph (field-to-cl-graph field)))
+      ;;     (setf num-holes (1- (cl-graph:connected-component-count graph)))
+      ;;     ;; (when (> num-holes 1)
+      ;;     ;;   (print-field field)
+      ;;     ;;   (cl-graph:graph->dot graph #P"graph.dot"
+      ;;     ;;                        :edge-labeler (lambda (e s) (declare (ignore e s)))
+      ;;     ;;                        :vertex-labeler (lambda (v s) (format s "(~A, ~A)"
+      ;;     ;;                                                              (pos-row (cl-graph:element v))
+      ;;     ;;                                                              (pos-col (cl-graph:element v)))))
+      ;;     ;;   (format t "Holes: ~A~%"
+      ;;     ;;           num-holes)
+      ;;     ;;   (read-line))
+      ;;     ))
+      (list min-row lines-removed old-lines-removed vert-compactness avg-height horiz-nums filled num-holes old-num-holes horiz-planarity))))
+
+(defvar *current-solutions*)
+(defvar *solutions-limit*)
+
+(defun make-solutions-box ()
+  (make-instance 'cl-heap:fibonacci-heap :key #'car)
+  ;;(list 0 nil nil)
+  )
+
+(defvar *solutions-by-pos*)
+
+(defun add-solution-by-pos (pos state estimate path)
+  (let ((old-res (gethash pos *solutions-by-pos*)))
+    (when (or (null old-res)
+              (> estimate (first old-res)))
+      (setf (gethash pos *solutions-by-pos*)
+            (list estimate state path)))))
+
+(defun flush-solutions ()
+  (maphash (lambda (pos val)
+             (declare (ignore pos))
+             (destructuring-bind (estimate state path) val
+               (add-solution state estimate path)))
+           *solutions-by-pos*))
+
+(defun add-solution (state estimate path)
+  (cl-heap:add-to-heap *current-solutions* (list estimate state path))
+  (when (> (cl-heap:heap-size *current-solutions*) *solutions-limit*)
+    (cl-heap:pop-heap *current-solutions*))
+  ;; (when (> estimate (first *current-solutions*))
+  ;;   (setf *current-solutions* (list estimate state path)))
+  )
+
+(defun found-solutions ()
+  (let ((lst nil))
+    (loop while (not (cl-heap:is-empty-heap-p *current-solutions*))
+       do (push (cl-heap:pop-heap *current-solutions*)
+                lst))
+    lst)
+  ;; (list *current-solutions*)
+  )
+
 
 (defun move-matching-words (command matching-words)
   (remove nil
@@ -81,31 +170,36 @@
                   (cons +cst-initial+ matching-words))))
 
 
-(defun one-unit-wave (state)
+(defun one-unit-wave (state base-path)
   ;; front is list of wave-states
   ;; wave-state is list of state path locked-cnt locked-list matching-words
   ;; matching-words is list of states to match magic words (see magic-words.lisp)
   (let ((visited (make-hash-table :test #'equal))
-        (front (list (list state nil 0 nil (list +cst-initial+))))
+        (front (list (list state base-path nil)))
         (magic-words-front nil)
-        (best-state state)
-        (best-state-est -99999999)
-        (best-path nil))
-    (labels ((%estimate (state old-pivot)
+        (*solutions-by-pos* (make-hash-table :test #'equalp))
+        ;; (best-state state)
+        ;; (best-state-est -99999999)
+        ;; (best-path nil)
+        (base-ests (raw-field-estimates (gs-field state) (gs-cleared-prev state))))
+    (labels ((%estimate (lock-delta state old-pivot)
                (declare (ignore old-pivot))
                (* ;;(1+ (pos-row old-pivot))
-                (estimate-field (gs-field state) (gs-cleared-prev state))
+                (compute-estimate (update-estimate
+                                   base-ests lock-delta
+                                   (gs-field state) (gs-cleared-prev state)))
                 ;; (if (gs-cleared-prev state)
                 ;;     5000
                 ;;     0)
-                (gs-score state)))
+                (gs-score state)
+                ))
              (%add-and-visit (state-data)
-               (destructuring-bind (state locked-cnt locked-list path pivot-before-move matching-words) state-data
+               (destructuring-bind (state path was-locked pivot-before-move matching-words) state-data
                  ;; (format t "Considering ~A (est A) (key ~A) (visited ~A)~%" (reverse path) #|(%estimate state pivot-before-move)|#
                  ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
-                 (let* ((finished (or (>= locked-cnt 1)
+                 (let* ((finished (or was-locked
                                       (gs-terminal? state)))
-                        (id (cons locked-list (wave-state-id state))))
+                        (id (wave-state-id state)))
                    (if (and (not finished)
                             (gethash id visited))
                        nil
@@ -114,28 +208,23 @@
                            (setf (gethash id visited)
                                  t))
                          (if finished
-                             (let ((est (%estimate state pivot-before-move)))
+                             (let ((est (%estimate *lock-delta* state pivot-before-move)))
                                ;; (format t "Found finished ~A (~A > ~A)~%" path est best-state-est)
-                               (when (> est
-                                        best-state-est)
-                                 (setf best-state state)
-                                 (setf best-path path)
-                                 (setf best-state-est est))
+                               ;; (when (> est
+                               ;;          best-state-est)
+                               ;;   (setf best-state state)
+                               ;;   (setf best-path path)
+                               ;;   (setf best-state-est est))
+                               (add-solution-by-pos pivot-before-move state est path)
                                nil)
-                             (list (list state path locked-cnt locked-list matching-words))))))))
-             (%one-cell (state path locked-cnt locked-list matching-words)
+                             (list (list state path matching-words))))))))
+             (%one-cell (state path matching-words)
                (let* ((moves (allowed-commands state))
                       (new-states (mapcar (lambda (m)
                                             (let ((*was-locked* nil))
                                               (list (next-state state m)
-                                                    (if *was-locked*
-                                                        (1+ locked-cnt)
-                                                        locked-cnt)
-                                                    (if *was-locked*
-                                                        (cons (wave-state-id state)
-                                                              locked-list)
-                                                        locked-list)
                                                     (cons m path)
+                                                    *was-locked*
                                                     (gs-pivot state)
                                                     (move-matching-words m matching-words))))
                                           moves)))
@@ -146,40 +235,49 @@
                      (setf magic-words-front nil)
                      (setf front nil))
                  (dolist (front-state front-to-process)
-                   (destructuring-bind (state path locked-cnt locked-list matching-words)
-                       front-state
-                     (let ((new-front-states (%one-cell state path locked-cnt locked-list matching-words)))
+                   (destructuring-bind (state path matching-words) front-state
+                     (let ((new-front-states (%one-cell state path matching-words)))
 
                        (dolist (new-front-state new-front-states)
                          ;; check matching-words
-                         (if (fifth new-front-state)
+                         (if (third new-front-state)
                              (push new-front-state magic-words-front)
                              (push new-front-state front)))))))
-
                (when (or front magic-words-front)
-                 (%run-wave))
-               ))
+                 (%run-wave))))
       ;;(setf best-state-est (%estimate state (gs-pivot state)))
       (%run-wave)
-      (values best-state (reverse best-path)))))
-
-(defparameter *wave-limit* 1)
+      (flush-solutions)
+      ;;(values best-state (reverse best-path))
+      )))
 
 (defun wave-one-by-one (state)
-  (let ((path nil))
-    (loop while (not (gs-terminal? state))
-       do
-       ;; (format t "New wave~%")
-         (multiple-value-bind (new-state new-path) (one-unit-wave state)
-           (if (and (null new-path)
-                    (not (gs-terminal? state)))
-               (progn
-                 (format t "Ooops in wave, no moves found~%")
-                 (setf state (terminate-state new-state)))
-               (progn
-                 (setf state new-state)
-                 (setf path (append (reverse new-path) path))))))
-    (values state (reverse path))))
+  (let ((best-score 0)
+        (best-path nil)
+        (best-state state)
+        (states-to-try (list (list 0 state nil))))
+    (loop while states-to-try
+       do (let ((new-states nil)
+                (*current-solutions* (make-solutions-box))
+                (*solutions-limit* 5))
+            ;; (format t "Trying ~A variants~%" (length states-to-try))
+            (loop for (est state path) in states-to-try
+               do
+               ;; (format t "Est = ~A, Path = ~A~%" est path)
+                 (one-unit-wave state path))
+            (loop for (new-est new-state new-path) in (found-solutions)
+               do (if (gs-terminal? new-state)
+                      (when (>= (gs-score new-state)
+                                best-score)
+                        (setf best-score (gs-score new-state))
+                        (setf best-path (reverse new-path))
+                        (setf best-state new-state))
+                      (push (list new-est new-state new-path)
+                            new-states)))
+            (setf states-to-try new-states)))
+    (values best-state best-path)))
+
+(defparameter *magic-words* nil)
 
 (defun simple-encode-solution (path)
   (encode-commands-with-magic-words *magic-words* path))

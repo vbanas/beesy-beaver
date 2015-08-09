@@ -32,6 +32,7 @@
 	  (when (probe-file f)
 	    ;;(format t "~A~%~%" (alexandria:read-file-into-string f))
 	    (setf result-list 
-		  (append result-list (simple-wave-from-task 
-				       (decode-task (alexandria:read-file-into-string f))))))) 
+		  (append result-list (let ((*standard-output* *error-output*))
+                                        (simple-wave-from-task 
+                                         (decode-task (alexandria:read-file-into-string f)))))))) 
 	(yason:encode result-list)))))

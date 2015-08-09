@@ -67,14 +67,19 @@
     (:counter-clockwise (1- last-rotations))
     (otherwise 0)))
 
+(defvar *lock-delta* nil)
+
 (defun lock-cells (field cells)
   (let ((*filled-rows* nil)
         (num-removed-rows 0))
     (loop for cell in cells
        do (setf field (put-cell field cell 1)))
     (setf num-removed-rows (length *filled-rows*))
-    (loop for row in (sort *filled-rows* #'<)
+    (setf *filled-rows* (sort *filled-rows* #'<))
+    (loop for row in *filled-rows*
        do (setf field (remove-row field row)))
+    (setf *lock-delta*
+          (list *filled-rows* cells))
     (values field num-removed-rows)))
 
 (defun check-cells (field cells)

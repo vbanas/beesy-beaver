@@ -29,21 +29,21 @@
   ((id :accessor task-id
        :initarg :id)
    (units :accessor task-units
-	  :initform nil
-	  :initarg :units
-	  :type list)
+          :initform nil
+          :initarg :units
+          :type list)
    (field :accessor task-field
-	  :initarg :field)
+          :initarg :field)
    (source-length :accessor task-source-length
-		 :initarg :source-length)
+                  :initarg :source-length)
    (source-seeds :accessor task-source-seeds
-		 :initarg :source-seeds)))
+                 :initarg :source-seeds)))
 
 (defclass unit ()
   ((members :accessor unit-members
-	    :initarg :members)
+            :initarg :members)
    (pivot :accessor unit-pivot
-	  :initarg :pivot)))
+          :initarg :pivot)))
 
 ;;{ "x": number, "y": number } /* x: column, y: row */
 ;;make-pos (row col)
@@ -55,9 +55,9 @@
 ;; }
 (defun decode-units (units)
   (mapcar (lambda (u) (make-instance 'unit
-				     :members (mapcar (lambda (p) (decode-cell p)) (gethash "members" u))
-				     :pivot (decode-cell (gethash "pivot" u)))) 
-	  units))
+                                     :members (mapcar (lambda (p) (decode-cell p)) (gethash "members" u))
+                                     :pivot (decode-cell (gethash "pivot" u))))
+          units))
 
 ;;
 (defun decode-field (width height filled)
@@ -70,14 +70,14 @@
 (defun decode-task (json)
   (let ((parsed (yason:parse json)))
     (make-instance 'task
-		   :id (gethash "id" parsed)
-		   :units (decode-units (gethash "units" parsed))
-		   :field (decode-field 
-			   (gethash "width" parsed)
-			   (gethash "height" parsed)
-			   (gethash "filled" parsed))
-		   :source-length (gethash "sourceLength" parsed)
-		   :source-seeds (gethash "sourceSeeds" parsed))))
+                   :id (gethash "id" parsed)
+                   :units (decode-units (gethash "units" parsed))
+                   :field (decode-field
+                           (gethash "width" parsed)
+                           (gethash "height" parsed)
+                           (gethash "filled" parsed))
+                   :source-length (gethash "sourceLength" parsed)
+                   :source-seeds (gethash "sourceSeeds" parsed))))
 
 
 ;; result
@@ -89,14 +89,14 @@
 ;; ]
 (defclass play-result ()
   ((problemId :accessor play-result-id
-	      :initarg :problemId)
+              :initarg :problemId)
    (seed :accessor play-result-seed
-	 :initarg :seed)
+         :initarg :seed)
    (tag :accessor play-result-tag
-	:initarg :tag
+        :initarg :tag
         :initform nil)
    (solution :accessor play-result-solution
-	     :initarg :solution)))
+             :initarg :solution)))
 
 (defmethod yason:encode ((play-result play-result) &optional (stream *standard-output*))
   (yason:with-output (stream)
@@ -108,10 +108,10 @@
       (yason:encode-object-element "solution" (play-result-solution play-result)))))
 
 (defun test-result-encode ()
-  (let ((res (list (make-instance 'play-result 
-				  :problemId 1 :seed 0 
-				  :tag "test1" :solution "some command1")
-		   (make-instance 'play-result 
-				  :problemId 2 :seed 1 
-				  :tag "test2" :solution "some command2"))))
+  (let ((res (list (make-instance 'play-result
+                                  :problemId 1 :seed 0
+                                  :tag "test1" :solution "some command1")
+                   (make-instance 'play-result
+                                  :problemId 2 :seed 1
+                                  :tag "test2" :solution "some command2"))))
     (yason:encode res)))
