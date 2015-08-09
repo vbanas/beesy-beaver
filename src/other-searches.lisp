@@ -2,7 +2,7 @@
 
 (declaim (optimize (debug 3)))
 
-(defparameter *magic-words-cst* nil)
+(defparameter *magic-words-cst* (make-command-seq-matching-tree nil))
 
 
 (defun wave-state-id (state)
@@ -193,13 +193,19 @@
           (mapcar (lambda (mw) (cst-next-state *magic-words-cst* mw command))
                   (cons +cst-initial+ matching-words))))
 
+(defstruct (front-state (:conc-name fs-))
+  state
+  path
+  matching-words
+  (words-score 0))
 
 (defun one-unit-wave (state base-path)
   ;; front is list of wave-states
   ;; wave-state is list of state path locked-cnt locked-list matching-words
   ;; matching-words is list of states to match magic words (see magic-words.lisp)
   (let ((visited (make-hash-table :test #'equal))
-        (front (list (list state base-path nil)))
+        (front (list ;(list state base-path nil)
+                     (make-front-state :state state :path base-path)))
         (magic-words-front nil)
         (*solutions-by-pos* (make-hash-table :test #'equalp))
         ;; (best-state state)
@@ -241,7 +247,11 @@
                                ;;   (setf best-state-est est))
                                (add-solution-by-pos pivot-before-move state est path)
                                nil)
-                             (list (list state path matching-words))))))))
+                             (list
+                              (make-front-state
+                               :state state
+                               :path path
+                               :matching-words matching-words))))))))
              (%one-cell (state path matching-words)
                (let* ((moves (allowed-commands state))
                       (new-states (mapcar (lambda (m)
@@ -259,12 +269,11 @@
                      (setf magic-words-front nil)
                      (setf front nil))
                  (dolist (front-state front-to-process)
-                   (destructuring-bind (state path matching-words) front-state
+                   (with-slots (state path matching-words words-score) front-state
                      (let ((new-front-states (%one-cell state path matching-words)))
-
                        (dolist (new-front-state new-front-states)
                          ;; check matching-words
-                         (if (third new-front-state)
+                         (if (fs-matching-words new-front-state)
                              (push new-front-state magic-words-front)
                              (push new-front-state front)))))))
                (when (or front magic-words-front)
