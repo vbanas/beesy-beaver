@@ -272,10 +272,12 @@
                   (*current-solutions* (make-solutions-box))
                   (*solutions-limit* 3))
               ;; (format *error-output* "Processing unit #~A~%" unit-num)
+              (start-time-delta-measurement)
               (loop for (est state path) in states-to-try
                  do
                  ;; (format t "Est = ~A, Path = ~A~%" est path)
                    (one-unit-wave state path))
+              (stop-time-delta-measurement)
               (loop for (new-est new-state new-path) in (found-solutions)
                  do (if (gs-terminal? new-state)
                         (%best new-state new-path)

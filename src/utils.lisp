@@ -6,12 +6,25 @@
   (setf *time-to-halt*
         (+ (get-internal-real-time)
            ;; 10 should be enough
-           (* (- seconds 10)
+           (* seconds
               internal-time-units-per-second))))
+
+(defvar *time-delta* (* 5 internal-time-units-per-second))
+(defvar *time-delta-start* nil)
+
+(defun start-time-delta-measurement ()
+  (setf *time-delta-start* (get-internal-real-time)))
+
+(defun stop-time-delta-measurement ()
+  (let ((new-delta (- (get-internal-real-time)
+                      *time-delta-start*)))
+    (when (> new-delta)
+      (setf *time-delta* new-delta))))
 
 (defun time-expired? ()
   (and *time-to-halt*
-       (>= (get-internal-real-time)
+       (>= (+ (get-internal-real-time)
+              *time-delta*)
            *time-to-halt*)))
 
 (defun min-max-list (min-fn key-fn list)
