@@ -46,3 +46,14 @@
                (yason:parse (alexandria:read-file-into-string file)))
              input-filenames)
      output)))
+
+(defun get-file-names (string)
+  "Returns a list of substrings of string
+divided by ONE space each.
+Note: Two consecutive spaces will be seen as
+if there were an empty string between them."
+  (mapcar #'pathname
+          (loop for i = 0 then (1+ j)
+             as j = (position #\Space string :start i)
+             collect (subseq string i j)
+             while j)))
