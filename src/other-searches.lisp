@@ -211,7 +211,10 @@
                  ;;         (wave-state-id state) (gethash (cons locked-list (wave-state-id state)) visited))
                  (let* ((finished (or was-locked
                                       (gs-terminal? state)))
-                        (id (cons (gs-matchers state) (wave-state-id state))))
+                        (id (wave-state-id state)
+                          ;; (cons (gs-matchers state)
+                          ;;       (wave-state-id state))
+                          ))
                    (if (and (not finished)
                             (gethash id visited))
                        nil
@@ -244,7 +247,7 @@
                      (let ((new-front-states (%one-cell state path)))
                        (dolist (new-front-state new-front-states)
                          ;; check matching-words
-                         (if (gs-matchers (first new-front-state))
+                         (if nil ;;(gs-matchers (first new-front-state))
                              (push new-front-state magic-words-front)
                              (push new-front-state front)))))))
                (when (or front magic-words-front)
@@ -298,15 +301,18 @@
 
 
 (defun simple-wave-from-task-one-seed (task seed-id)
-  (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
-    ;;(declare (ignore state))
-    (let ((res (make-instance 'play-result
-                              :seed (nth seed-id (task-source-seeds task))
-                              :problemId (task-id task)
-                              :tag (format nil "~A_SCORE_~A" (task-id task) (+ (compute-magic-words-bonus state)
-                                                                               (gs-score state)))
-                              :solution (simple-encode-solution path))))
-      res)))
+  (let ((init-state (initial-state task seed-id)))
+    (multiple-value-bind (state path) (wave-one-by-one init-state)
+      ;;(declare (ignore state))
+      ;; Add power phrases to the path
+      (setf path (detect-and-replace-power-seqs *magic-words-cst* init-state path))
+      (let ((res (make-instance 'play-result
+                                :seed (nth seed-id (task-source-seeds task))
+                                :problemId (task-id task)
+                                :tag (format nil "~A_SCORE_~A" (task-id task) (+ (compute-magic-words-bonus state)
+                                                                                 (gs-score state)))
+                                :solution (simple-encode-solution path))))
+        res))))
 
 (defun simple-wave-from-task (task)
   (loop for seed-id below (length (task-source-seeds task))
@@ -317,10 +323,21 @@
                 (when (time-expired?)
                   (setf seed-id (1+ (length (task-source-seeds task)))))))))
 
+(defun run-state-path (state path)
+  (reduce #'next-state path
+          :initial-value state))
+
 (defun simple-wave-from-task-json (task-file seed-id &optional tag)
-  (let ((*magic-words-cst* (make-command-seq-matching-tree nil))
-        (task (decode-task (alexandria:read-file-into-string task-file))))
-    (multiple-value-bind (state path) (wave-one-by-one (initial-state task seed-id))
+  (let* ((*magic-words-cst* (make-command-seq-matching-tree '("r'lyeh" "ei!" "ia! ia!" "yuggoth")))
+         (*magic-words* '("r'lyeh" "ei!" "ia! ia!" "yuggoth"))
+         (task (decode-task (alexandria:read-file-into-string task-file)))
+         (init-state (initial-state task seed-id)))
+    (multiple-value-bind (state path) (wave-one-by-one init-state)
+      (setf path (detect-and-replace-power-seqs
+                  (generate-seq-automata
+                   (mapcar #'map-word-to-commands *magic-words*))
+                  init-state path))
+      (setf state (run-state-path state path))
       (let ((res (make-instance 'play-result
                                 :tag tag
                                 :seed (nth seed-id (task-source-seeds task))
