@@ -140,7 +140,7 @@ d3.select ("#load-level").on ("click", function () {
 
 
 d3.select ("#simulate-level").on ("click", function () {
-    $.get ("/simulate", simulate);
+    $.get ("/simulate", function (data) { simulate (data.solution); });
 });
 
 d3.select ("#toggle-simulation").on ("click", function () {

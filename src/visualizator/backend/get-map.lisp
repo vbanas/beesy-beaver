@@ -45,8 +45,13 @@
 (define-easy-handler (simulate :uri "/simulate") ()
   (setf (content-type*) "application/json")
   (multiple-value-bind (state path) (bb::wave-one-by-one *current-game-state*)
-    (setf *current-game-state* state)
-    (bb::simple-encode-solution path)))
+    ;; we will send command from client to mutate the initial state not the
+    ;; final state
+    (declare (ignore state))
+    (with-output-to-string (str)
+      (yason:encode-alist
+       (list (cons :|solution| (bb::simple-encode-solution path)))
+       str))))
 
 
 (defun parse-magic-words (words-str)
