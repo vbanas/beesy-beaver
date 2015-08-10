@@ -32,12 +32,13 @@ function draw_honeycomb (columns, rows, points, pivot, score, units_left) {
 
     var coords = [];
     for (var i = 0; i < rows; i++) {
+        var offset = i & 1 ? (hexRadius * 1.75) / 2 : 0;
         for (var j = 0; j < columns; j++) {
-            coords.push([hexRadius * j * 1.75, hexRadius * i * 1.5]);
+            coords.push({ x : hexRadius * j * 1.75 + offset, y : hexRadius * i * 1.5});
         }//for j
     }//for i
 
-    var hexbins = hexbin (coords);
+    var hexbins = /*hexbin*/ (coords);
 
     //Create SVG element
     var svg = d3.select("#chart").append("svg")
