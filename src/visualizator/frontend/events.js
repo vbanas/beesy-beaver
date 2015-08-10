@@ -129,12 +129,18 @@ d3.select("body").on("keydown", function () {
 });
 
 
-d3.select ("#simulate-level").on ("click", function () {
+d3.select ("#load-level").on ("click", function () {
     var filename = d3.select ("#level-file-value").property ("value");
     var seed = d3.select ("#seed-index-value").property ("value");
-    var url = "/simulate?file=" + encodeURIComponent (filename) +
-        "&seed=" + encodeURIComponent (seed);
-    $.get (url, function (data) { simulate (data.solution); });
+    var magic_words = d3.select ("#magic-words-value").property ("value");
+    var url = "/load-level?file=" + encodeURIComponent (filename) +
+        "&seed=" + encodeURIComponent (seed) + "&words=" + encodeURIComponent (magic_words)
+    $.get (url, update_data);
+});
+
+
+d3.select ("#simulate-level").on ("click", function () {
+    $.get ("/simulate", simulate);
 });
 
 d3.select ("#toggle-simulation").on ("click", function () {

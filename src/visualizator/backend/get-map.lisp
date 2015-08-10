@@ -1,4 +1,3 @@
-
 (in-package :visualizator-backend)
 
 (declaim (optimize (debug 3)))
@@ -26,14 +25,32 @@
     (get-output-stream-string result)))
 
 
-(define-easy-handler (simulate :uri "/simulate") (file seed)
+(define-easy-handler (load-level :uri "/load-level") (file seed words)
   (setf (content-type*) "application/json")
   (let ((seed-int (parse-integer seed)))
-    (multiple-value-bind (task solution)
-        (bb::get-one-solution-for-file (pathname file) seed-int) 
-      (setf *current-game-state*
-            (bb::initial-state task seed-int))
-      solution)))
+    (setf bb::*magic-words* (parse-magic-words words))
+    (setf bb::*magic-words-cst*
+          (bb::make-command-seq-matching-tree bb::*magic-words* ))
+    (setf *current-game-state*
+          (bb::initial-state (bb::decode-task
+                              (alexandria:read-file-into-string
+                               (pathname file)))
+                             seed-int))
+    (with-output-to-string (str)
+      (yason:encode-alist
+       (get-current-map)
+       str))))
+
+
+(define-easy-handler (simulate :uri "/simulate") ()
+  (setf (content-type*) "application/json")
+  (multiple-value-bind (state path) (bb::wave-one-by-one *current-game-state*)
+    (setf *current-game-state* state)
+    (bb::simple-encode-solution path)))
+
+
+(defun parse-magic-words (words-str)
+  (cl-ppcre:split ";" words-str))
 
 
 (defun get-current-map ()
@@ -55,4 +72,3 @@
                                    1 0))
           (cons :units_left (bb::unit-generator-units-left
                              (bb::gs-unit-generator *current-game-state*))))))
-
