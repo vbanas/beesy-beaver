@@ -43,7 +43,8 @@
   (with-open-file (output output-filename :direction :output)
     (yason:encode
      (mapcan (lambda (file)
-               (yason:parse (alexandria:read-file-into-string file)))
+               (let ((file-entry (alexandria:read-file-into-string file)))
+                 (when file-entry file-entry)))
              input-filenames)
      output)))
 
