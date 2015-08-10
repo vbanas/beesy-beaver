@@ -299,16 +299,13 @@
 (defun simple-encode-solution (path)
   (encode-commands-with-magic-words *magic-words* path))
 
-
 (defun simple-wave-from-task-one-seed (task seed-id)
   (let ((init-state (initial-state task seed-id)))
     (multiple-value-bind (state path) (wave-one-by-one init-state)
       ;;(declare (ignore state))
       ;; Add power phrases to the path
       (time
-       (setf path (detect-and-replace-power-seqs 
-                   (generate-seq-automata
-                    (mapcar #'map-word-to-commands *magic-words*)) init-state path)))
+       (setf path (detect-and-replace-power-seqs init-state path)))
       (setf state (run-state-path state path))
       (let ((res (make-instance 'play-result
                                 :seed (nth seed-id (task-source-seeds task))
@@ -374,3 +371,4 @@
     (loop for (score vertc horizc holesc) in (sort all #'> :key #'car)
        do (format t "~A : ~A, ~A, ~A~%"
                   score vertc horizc holesc))))
+

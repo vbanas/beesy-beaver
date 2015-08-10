@@ -355,52 +355,64 @@
               (cdr row))
       (incf row-ind))))
 
-(defun generate-seq-mutations (seq)
-  (declare (optimize (debug 3)))
-  (let* ((max-len (length seq))
-         (start-pos (make-pos 0 (1+ max-len)))
-         (finish-pos (reduce (lambda (pos move)
-                               (if (or (eq move :clockwise)
-                                       (eq move :counter-clockwise))
-                                   pos
-                                   (let ((new-pos (move pos move)))
-                                     (assert (not (eq new-pos :invalid)))
-                                     new-pos)))
-                             seq
-                             :initial-value start-pos))
-         (queue (list (list start-pos 0 nil)))
-         (result nil))
-    (loop while queue do
-         (let ((state (pop queue)))
-           (destructuring-bind (pos steps path) state
-             (dolist (move '(:east :west :south-east :south-west))
-               (let ((new-pos (move pos move)))
-                 (cond
-                   ((equalp new-pos finish-pos)
-                    (push (reverse (cons move path)) result))
-                   ((and (< steps max-len)
-                         (not (eq new-pos :invalid)))
-                    (push (list new-pos (1+ steps) (cons move path))
-                          queue))))))))
-    result))
 
-(defun generate-seq-automata (seqs)
+(defun generate-seq-mutations (seq unit)
+  (declare (optimize (debug 3)))
+  (labels ((%move (cells move)
+             (if (or (eq move :clockwise)
+                     (eq move :counter-clockwise))
+                 (mapcar (lambda (cell)
+                           (rotate (unit-pivot unit) cell (eq move :clockwise)))
+                         cells)
+                 (mapcar (lambda (cell)
+                           (let ((new-pos (move cell move)))
+                             (assert (not (eq new-pos :invalid)))
+                             new-pos))
+                         cells))))
+    (let* ((max-len (length seq))
+           (start-pos (unit-members unit))
+           (finish-pos (reduce #'%move
+                               seq
+                               :initial-value start-pos))
+           (queue (list (list start-pos 0 nil)))
+           (result nil))
+      (loop while queue do
+           (let ((state (pop queue)))
+             (destructuring-bind (pos steps path) state
+               (dolist (move '(:east :west :south-east :south-west :clockwise :counter-clockwise))
+                 (let ((new-pos (%move pos move)))
+                   (cond
+                     ((equalp new-pos finish-pos)
+                      (push (reverse (cons move path)) result))
+                     ((and (< steps max-len)
+                           (not (eq new-pos :invalid)))
+                      (push (list new-pos (1+ steps) (cons move path))
+                            queue))))))))
+      result)))
+
+(defun generate-seq-automata (seqs unit)
   (let ((mutations (mapcan (lambda (seq)
                              (mapcar (lambda (mutation)
                                        (cons mutation seq))
-                                     (generate-seq-mutations seq)))
+                                     (generate-seq-mutations seq unit)))
                            seqs)))
     (make-command-seq-matching-tree-1 mutations)))
 
-(defun detect-and-replace-power-seqs (cst initial-state commands)
-  (let ((matchers nil)
-        (result nil)
-        (state initial-state)
-        (commands-so-far 0))
+(defun detect-and-replace-power-seqs (initial-state commands)
+  (let* ((matchers nil)
+         (result nil)
+         (state initial-state)
+         (commands-so-far 0)
+         (ok 0)
+         (fail 0)
+         (current-automaton (gs-automata state)))
     (dolist (cmd commands)
       ;; (format t "consuming command ~A~%" cmd)
+      (when (not (eq current-automaton (gs-automata state)))
+        (setf current-automaton (gs-automata state))
+        (setf matchers nil))
       (setf matchers (mapcar (lambda (matcher)
-                               (let ((new-matcher (cst-next-state cst matcher cmd)))
+                               (let ((new-matcher (cst-next-state current-automaton matcher cmd)))
                                  ;; (format t "moving matcher ~A to state ~A words: ~A~%"
                                  ;;         matcher new-matcher (cst-words cst new-matcher))
                                  new-matcher))
@@ -410,7 +422,7 @@
       (setf state (next-state state cmd))
       (let ((spell (block find-spell
                      (loop for matcher in matchers do
-                          (let* ((spells (cst-words cst matcher))
+                          (let* ((spells (cst-words current-automaton matcher))
                                  (commands-to-remove (- commands-so-far
                                                         (length (car spells))))
                                  (start-state
@@ -420,12 +432,15 @@
                                                              nil)
                                             :initial-value initial-state))))
                             (dolist (spell spells)
+                              ;; (format t ">> looging at spell: ~A~%" spell)
                               (let* ((simulated-state
                                       (reduce #'next-state spells
                                               :initial-value start-state)))
                                 (when (equalp (gs-unit-cells state)
                                               (gs-unit-cells simulated-state))
-                                  (return-from find-spell spell))))))
+                                  (incf ok)
+                                  (return-from find-spell spell))
+                                (incf fail)))))
                      nil)))
         (when spell
           (setf matchers nil)
@@ -433,4 +448,5 @@
           (setf commands-so-far (length result))
           (dolist (cmd (reverse spell))
             (push cmd result)))))
+    (format t ">> Done: ok ~A fail ~A~%" ok fail)
     (reverse result)))

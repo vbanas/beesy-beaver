@@ -12,7 +12,8 @@
   last-rotations
   max-rotations
   matchers
-  magic-words)
+  magic-words
+  automata)
 
 (defun compute-magic-words-bonus (game-state)
   (reduce (lambda (accum word/count)
@@ -130,7 +131,8 @@
   rnumbers
   units
   max-rots
-  units-left)
+  units-left
+  automatons)
 
 (defun make-unit-generator (task seed-index)
   (let* ((units (make-array (length (task-units task))
@@ -141,26 +143,41 @@
                                                                  (unit-pivot unit)
                                                                  (unit-members unit)))
                                                               (task-units task))))
+         (magic-word-seqs (mapcar #'map-word-to-commands *magic-words*))
+         (units-counter 0)
+         (automatons (make-array (length (task-units task))
+                                 :initial-contents
+                                 (mapcar (lambda (unit)
+                                           (prog1
+                                               (generate-seq-automata magic-word-seqs unit)
+                                             (format t "automata ready for unit ~A of ~A~%"
+                                                     (incf units-counter)
+                                                     (length (task-units task)))))
+                                         (task-units task))))
          (rnumbers (get-seeds (nth seed-index (task-source-seeds task))
                               (task-source-length task)))
          (units-left (length rnumbers)))
+    (format t ">> unit generator ready: ~A~%" automatons)
     (mk-ug :rnumbers rnumbers
            :units units
            :max-rots unit-max-rots
-           :units-left units-left)))
+           :units-left units-left
+           :automatons automatons)))
 
 (defun generate-new-unit (gen)
-  (with-slots (rnumbers units max-rots units-left) gen
+  (with-slots (rnumbers units max-rots units-left automatons) gen
     (let* ((num (car rnumbers))
            (unit (and num (aref units (mod num (array-dimension units 0)))))
-           (max-rot (and num (aref max-rots (mod num (array-dimension units 0))))))
+           (max-rot (and num (aref max-rots (mod num (array-dimension units 0)))))
+           (automata (and num (aref automatons (mod num (array-dimension automatons 0))))))
       (when unit
         (multiple-value-bind (pivot members)
             (unit-start-position (unit-pivot unit) (unit-members unit))
-          (values pivot members max-rot
+          (values pivot members max-rot automata
                   (mk-ug :rnumbers (cdr rnumbers)
                          :units units
                          :max-rots max-rots
+                         :automatons automatons
                          :units-left (1- units-left))))))))
 
 (defun allowed-commands (state)
@@ -210,7 +227,7 @@
 
 (defun next-state (cur-state command)
   (with-slots (field score pivot unit-cells unit-generator cleared-prev last-rotations last-horiz-move max-rotations
-                     matchers magic-words)
+                     matchers magic-words automata)
       cur-state
     (multiple-value-bind (new-pivot new-cells)
         (update-command-cells field pivot unit-cells command)
@@ -221,7 +238,7 @@
                    (multiple-value-bind (new-field removed-rows)
                        (lock-cells field unit-cells)
                      (setf *was-locked* t)
-                     (multiple-value-bind (pivot units new-max-rot new-gen) (generate-new-unit unit-generator)
+                     (multiple-value-bind (pivot units new-max-rot new-automata new-gen) (generate-new-unit unit-generator)
                        (if (and pivot
                                 (check-cells new-field units))
                            (make-game-state :field new-field
@@ -235,7 +252,8 @@
                                             :last-rotations 0
                                             :max-rotations new-max-rot
                                             :matchers new-matchers
-                                            :magic-words new-magic-words)
+                                            :magic-words new-magic-words
+                                            :automata new-automata)
                            (make-game-state :field new-field
                                             :score (+ score (compute-score removed-rows cleared-prev (length unit-cells)))
                                             :pivot (make-pos 0 0)
@@ -247,7 +265,8 @@
                                             :max-rotations 0
                                             :terminal? t
                                             :matchers new-matchers
-                                            :magic-words new-magic-words))))
+                                            :magic-words new-magic-words
+                                            :automata new-automata))))
                    (make-game-state :field field
                                     :score score
                                     :pivot new-pivot
@@ -259,12 +278,13 @@
                                     :max-rotations max-rotations
                                     :terminal? nil
                                     :matchers new-matchers
-                                    :magic-words new-magic-words))))
+                                    :magic-words new-magic-words
+                                    :automata automata))))
           (values new-state (gs-terminal? new-state)))))))
 
 (defun initial-state (task seed-index)
   (let ((gen (make-unit-generator task seed-index)))
-    (multiple-value-bind (pivot units max-rot new-gen) (generate-new-unit gen)
+    (multiple-value-bind (pivot units max-rot automata new-gen) (generate-new-unit gen)
       (let ((state (make-game-state :field (task-field task)
                                     :score 0
                                     :pivot pivot
@@ -274,7 +294,8 @@
                                     :terminal? nil
                                     :last-horiz-move nil
                                     :last-rotations 0
-                                    :max-rotations max-rot)))
+                                    :max-rotations max-rot
+                                    :automata automata)))
         (if (and pivot
                  (check-cells (task-field task) units))
             (values
@@ -346,3 +367,4 @@
                          (if last-horiz-move last-horiz-move "0")
                          last-rotations)))
                'list)))))
+
