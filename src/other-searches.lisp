@@ -305,7 +305,11 @@
     (multiple-value-bind (state path) (wave-one-by-one init-state)
       ;;(declare (ignore state))
       ;; Add power phrases to the path
-      (setf path (detect-and-replace-power-seqs *magic-words-cst* init-state path))
+      (time
+       (setf path (detect-and-replace-power-seqs 
+                   (generate-seq-automata
+                    (mapcar #'map-word-to-commands *magic-words*)) init-state path)))
+      (setf state (run-state-path state path))
       (let ((res (make-instance 'play-result
                                 :seed (nth seed-id (task-source-seeds task))
                                 :problemId (task-id task)

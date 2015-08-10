@@ -398,8 +398,12 @@
         (state initial-state)
         (commands-so-far 0))
     (dolist (cmd commands)
+      ;; (format t "consuming command ~A~%" cmd)
       (setf matchers (mapcar (lambda (matcher)
-                               (cst-next-state cst matcher cmd))
+                               (let ((new-matcher (cst-next-state cst matcher cmd)))
+                                 ;; (format t "moving matcher ~A to state ~A words: ~A~%"
+                                 ;;         matcher new-matcher (cst-words cst new-matcher))
+                                 new-matcher))
                              (cons +cst-initial+ matchers)))
       (incf commands-so-far)
       (push cmd result)
@@ -407,10 +411,13 @@
       (let ((spell (block find-spell
                      (loop for matcher in matchers do
                           (let* ((spells (cst-words cst matcher))
+                                 (commands-to-remove (- commands-so-far
+                                                        (length (car spells))))
                                  (start-state
                                   (when spells
-                                    (reduce #'next-state (subseq commands 0 (- commands-so-far
-                                                                               (length (car spells))))
+                                    (reduce #'next-state (if (> commands-to-remove 0)
+                                                             (subseq commands 0 commands-to-remove)
+                                                             nil)
                                             :initial-value initial-state))))
                             (dolist (spell spells)
                               (let* ((simulated-state
@@ -423,6 +430,7 @@
         (when spell
           (setf matchers nil)
           (setf result (nthcdr (length spell) result))
+          (setf commands-so-far (length result))
           (dolist (cmd (reverse spell))
             (push cmd result)))))
     (reverse result)))
