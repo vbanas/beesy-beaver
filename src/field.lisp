@@ -354,3 +354,75 @@
                   "")
               (cdr row))
       (incf row-ind))))
+
+(defun generate-seq-mutations (seq)
+  (declare (optimize (debug 3)))
+  (let* ((max-len (length seq))
+         (start-pos (make-pos 0 (1+ max-len)))
+         (finish-pos (reduce (lambda (pos move)
+                               (if (or (eq move :clockwise)
+                                       (eq move :counter-clockwise))
+                                   pos
+                                   (let ((new-pos (move pos move)))
+                                     (assert (not (eq new-pos :invalid)))
+                                     new-pos)))
+                             seq
+                             :initial-value start-pos))
+         (queue (list (list start-pos 0 nil)))
+         (result nil))
+    (loop while queue do
+         (let ((state (pop queue)))
+           (destructuring-bind (pos steps path) state
+             (dolist (move '(:east :west :south-east :south-west))
+               (let ((new-pos (move pos move)))
+                 (cond
+                   ((equalp new-pos finish-pos)
+                    (push (reverse (cons move path)) result))
+                   ((and (< steps max-len)
+                         (not (eq new-pos :invalid)))
+                    (push (list new-pos (1+ steps) (cons move path))
+                          queue))))))))
+    result))
+
+(defun generate-seq-automata (seqs)
+  (let ((mutations (mapcan (lambda (seq)
+                             (mapcar (lambda (mutation)
+                                       (cons mutation seq))
+                                     (generate-seq-mutations seq)))
+                           seqs)))
+    (make-command-seq-matching-tree-1 mutations)))
+
+(defun detect-and-replace-power-seqs (cst initial-state commands)
+  (let ((matchers nil)
+        (result nil)
+        (state initial-state)
+        (commands-so-far 0))
+    (dolist (cmd commands)
+      (setf matchers (mapcar (lambda (matcher)
+                               (cst-next-state cst matcher cmd))
+                             (cons +cst-initial+ matchers)))
+      (incf commands-so-far)
+      (push cmd result)
+      (setf state (next-state state cmd))
+      (let ((spell (block find-spell
+                     (loop for matcher in matchers do
+                          (let* ((spells (cst-words cst matcher))
+                                 (start-state
+                                  (when spells
+                                    (reduce #'next-state (subseq commands 0 (- commands-so-far
+                                                                               (length (car spells))))
+                                            :initial-value initial-state))))
+                            (dolist (spell spells)
+                              (let* ((simulated-state
+                                      (reduce #'next-state spells
+                                              :initial-value start-state)))
+                                (when (equalp (gs-unit-cells state)
+                                              (gs-unit-cells simulated-state))
+                                  (return-from find-spell spell))))))
+                     nil)))
+        (when spell
+          (setf matchers nil)
+          (setf result (nthcdr (length spell) result))
+          (dolist (cmd (reverse spell))
+            (push cmd result)))))
+    (reverse result)))

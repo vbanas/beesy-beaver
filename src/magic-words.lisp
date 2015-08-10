@@ -60,12 +60,13 @@
                :type hash-table)
   (state/seq (make-hash-table) :type hash-table))
 
-(defun make-command-seq-matching-tree (words)
+(defun make-command-seq-matching-tree-1 (sequences)
   (let ((tree (make-command-seq-tree))
         (states-counter 0))
     (with-slots (transitions state/seq) tree
-      (dolist (word words)
-        (let ((seq (map-word-to-commands word))
+      (dolist (pair sequences)
+        (let ((seq (car pair))
+              (word (cdr pair))
               (state +cst-initial+))
           (dolist (cmd seq)
             (let ((key (cons state cmd)))
@@ -80,6 +81,13 @@
     ;;          (sort words #'> :key #'length)))
     ;;  (cst-state/seq tree))
     tree))
+
+(defun make-command-seq-matching-tree (words)
+  (make-command-seq-matching-tree-1
+   (mapcar (lambda (word)
+             (cons (map-word-to-commands word)
+                   word))
+           words)))
 
 (defun cst-next-state (cst state command)
   (gethash (cons state command)
