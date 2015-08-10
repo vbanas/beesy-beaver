@@ -260,26 +260,35 @@
         (best-path nil)
         (best-state state)
         (states-to-try (list (list 0 state nil))))
-    (loop while states-to-try
+    (labels ((%best (new-state new-path)
+               (when (>= (gs-score new-state)
+                         best-score)
+                 (setf best-score (gs-score new-state))
+                 (setf best-path (reverse new-path))
+                 (setf best-state new-state))))
+      (loop while states-to-try
          for unit-num from 0
-       do (let ((new-states nil)
-                (*current-solutions* (make-solutions-box))
-                (*solutions-limit* 3))
-            (format *error-output* "Processing unit #~A~%" unit-num)
-            (loop for (est state path) in states-to-try
-               do
-               ;; (format t "Est = ~A, Path = ~A~%" est path)
-                 (one-unit-wave state path))
-            (loop for (new-est new-state new-path) in (found-solutions)
-               do (if (gs-terminal? new-state)
-                      (when (>= (gs-score new-state)
-                                best-score)
-                        (setf best-score (gs-score new-state))
-                        (setf best-path (reverse new-path))
-                        (setf best-state new-state))
-                      (push (list new-est new-state new-path)
-                            new-states)))
-            (setf states-to-try new-states)))
+         do (let ((new-states nil)
+                  (*current-solutions* (make-solutions-box))
+                  (*solutions-limit* 3))
+              ;; (format *error-output* "Processing unit #~A~%" unit-num)
+              (start-time-delta-measurement)
+              (loop for (est state path) in states-to-try
+                 do
+                 ;; (format t "Est = ~A, Path = ~A~%" est path)
+                   (one-unit-wave state path))
+              (stop-time-delta-measurement)
+              (loop for (new-est new-state new-path) in (found-solutions)
+                 do (if (gs-terminal? new-state)
+                        (%best new-state new-path)
+                        (push (list new-est new-state new-path)
+                              new-states)))
+              (setf states-to-try new-states)
+              (when (time-expired?)
+                (loop for (est state path) in states-to-try
+                   do
+                     (%best state path))
+                (setf states-to-try nil)))))
     (values best-state best-path)))
 
 (defparameter *magic-words* nil)
@@ -303,7 +312,10 @@
   (loop for seed-id below (length (task-source-seeds task))
      collect
        (progn (format *error-output* "Seed #~A~%" seed-id)
-              (simple-wave-from-task-one-seed task seed-id))))
+              (prog1
+                  (simple-wave-from-task-one-seed task seed-id)
+                (when (time-expired?)
+                  (setf seed-id (1+ (length (task-source-seeds task)))))))))
 
 (defun simple-wave-from-task-json (task-file seed-id &optional tag)
   (let ((*magic-words-cst* (make-command-seq-matching-tree nil))

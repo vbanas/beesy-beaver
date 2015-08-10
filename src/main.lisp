@@ -22,8 +22,10 @@
 		    ((string= "-p" o) (push v phrases))
 		    ((string= "-c" o) (setq proc-count v))
 		    ((string= "-m" o) (setq memory v))
-		    ((string= "-t" o) (setq time v)))))
+		    ((string= "-t" o) (setq time (parse-integer v :junk-allowed t))))))
 	      (alexandria:plist-alist (cdr parsed-args)))
+      (when time
+        (set-timeout time))
       (setq *magic-words* phrases)
       (setq *magic-words-cst* (make-command-seq-matching-tree phrases))
       ;;(format t "~A~%" files)
